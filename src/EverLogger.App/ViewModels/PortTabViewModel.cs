@@ -36,8 +36,15 @@ public class PortTabViewModel : ViewModelBase
     // Callbacks to MainViewModel
     private readonly Action<PortTabViewModel> _connectAction;
     private readonly Action<PortTabViewModel> _disconnectAction;
+    private readonly Action<PortTabViewModel, byte[]> _sendAction;
     private readonly Func<string> _getLogDirectory;
     private readonly Func<string> _getLogFileTemplate;
+
+    // Tx state
+    private string _txInput = string.Empty;
+    private string _selectedLineEnding = "CRLF";
+    private bool _sendAsHex;
+    private long _bytesSent;
 
     // Shared collections from MainViewModel
     public ObservableCollection<PortInfo> AvailablePorts { get; }
@@ -48,12 +55,14 @@ public class PortTabViewModel : ViewModelBase
         ObservableCollection<int> commonBaudRates,
         Action<PortTabViewModel> connectAction,
         Action<PortTabViewModel> disconnectAction,
+        Action<PortTabViewModel, byte[]> sendAction,
         Func<string> getLogDirectory,
         Func<string> getLogFileTemplate)
     {
         _config = new SerialPortConfig();
         _connectAction = connectAction;
         _disconnectAction = disconnectAction;
+        _sendAction = sendAction;
         _getLogDirectory = getLogDirectory;
         _getLogFileTemplate = getLogFileTemplate;
         AvailablePorts = availablePorts;
@@ -74,6 +83,9 @@ public class PortTabViewModel : ViewModelBase
             () => IsConnected);
         ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
+
+        // Tx command
+        SendCommand = new RelayCommand(Send, () => IsConnected && !string.IsNullOrEmpty(TxInput));
     }
 
     // ───────────────── Config State ─────────────────
@@ -219,6 +231,7 @@ public class PortTabViewModel : ViewModelBase
                 ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)DisconnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)ResetConfigCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
             }
         }
     }
@@ -277,8 +290,43 @@ public class PortTabViewModel : ViewModelBase
     public ICommand DisconnectCommand { get; }
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
+    public ICommand SendCommand { get; }
 
     public string LogButtonText => IsLogging ? "Log OFF" : "Log ON";
+
+    // ───────────────── Tx Properties ─────────────────
+
+    public string[] LineEndingOptions { get; } = ["None", "CR", "LF", "CRLF"];
+
+    public string TxInput
+    {
+        get => _txInput;
+        set
+        {
+            if (SetProperty(ref _txInput, value))
+            {
+                ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string SelectedLineEnding
+    {
+        get => _selectedLineEnding;
+        set => SetProperty(ref _selectedLineEnding, value);
+    }
+
+    public bool SendAsHex
+    {
+        get => _sendAsHex;
+        set => SetProperty(ref _sendAsHex, value);
+    }
+
+    public long BytesSent
+    {
+        get => _bytesSent;
+        set => SetProperty(ref _bytesSent, value);
+    }
 
     // ───────────────── Config Actions ─────────────────
 
@@ -353,6 +401,58 @@ public class PortTabViewModel : ViewModelBase
         _logWriter?.Queue.TryWrite(packet);
     }
 
+    // ───────────────── Tx (Send) ─────────────────
+
+    private void Send()
+    {
+        if (string.IsNullOrEmpty(TxInput) || !IsConnected) return;
+
+        try
+        {
+            byte[] data;
+            if (SendAsHex)
+            {
+                data = ParseHexString(TxInput);
+            }
+            else
+            {
+                string lineEnding = SelectedLineEnding switch
+                {
+                    "CR" => "\r",
+                    "LF" => "\n",
+                    "CRLF" => "\r\n",
+                    _ => ""
+                };
+                data = System.Text.Encoding.ASCII.GetBytes(TxInput + lineEnding);
+            }
+
+            _sendAction(this, data);
+            BytesSent += data.Length;
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Tx Error: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Parses a hex string like "48 65 6C 6C 6F" or "48656C6C6F" into bytes.
+    /// </summary>
+    private static byte[] ParseHexString(string hex)
+    {
+        // Remove common separators
+        hex = hex.Replace(" ", "").Replace("-", "").Replace("0x", "").Replace(",", "");
+        if (hex.Length % 2 != 0)
+            throw new FormatException("Hex string must have an even number of characters.");
+
+        byte[] bytes = new byte[hex.Length / 2];
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+        }
+        return bytes;
+    }
+
     // ───────────────── Monitor Display ─────────────────
 
     public void AppendData(DataPacket packet)
@@ -425,6 +525,7 @@ public class PortTabViewModel : ViewModelBase
         _lineBuffer.Clear();
         BytesReceived = 0;
         BytesLogged = 0;
+        BytesSent = 0;
     }
 
     /// <summary>

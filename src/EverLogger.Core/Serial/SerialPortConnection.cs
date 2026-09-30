@@ -125,6 +125,26 @@ public class SerialPortConnection : IDisposable
     }
 
     /// <summary>
+    /// Writes data to the serial port.
+    /// </summary>
+    /// <param name="data">The bytes to write.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the port is not open.</exception>
+    public void Write(byte[] data)
+    {
+        if (_port == null || !_port.IsOpen)
+            throw new InvalidOperationException($"Port {Config.PortName} is not open.");
+
+        try
+        {
+            _port.Write(data, 0, data.Length);
+        }
+        catch (Exception ex) when (ex is IOException || ex is TimeoutException)
+        {
+            ErrorOccurred?.Invoke(Config.PortName, ex);
+        }
+    }
+
+    /// <summary>
     /// Closes the serial port and stops the read loop.
     /// </summary>
     public void Close()

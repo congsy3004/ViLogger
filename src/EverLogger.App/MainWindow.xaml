@@ -182,6 +182,26 @@
                                     </WrapPanel>
                                 </Border>
 
+                                <!-- Tx Bar -->
+                                <Border DockPanel.Dock="Bottom" Background="{StaticResource SecondaryBackgroundBrush}" 
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="4,3">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Send" Command="{Binding SendCommand}" 
+                                                Padding="10,2" FontSize="10" Margin="4,0,0,0"/>
+                                        <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding LineEndingOptions}" 
+                                                  SelectedItem="{Binding SelectedLineEnding}" Width="55" FontSize="10" Padding="2,1" Margin="2,0"/>
+                                        <CheckBox DockPanel.Dock="Right" Content="Hex" IsChecked="{Binding SendAsHex}" 
+                                                  Foreground="{StaticResource PrimaryForegroundBrush}" 
+                                                  VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
+                                        <TextBlock DockPanel.Dock="Left" Text="TX:" 
+                                                   Foreground="{StaticResource PrimaryForegroundBrush}" 
+                                                   VerticalAlignment="Center" FontSize="10" Margin="0,0,4,0"/>
+                                        <TextBox Text="{Binding TxInput, UpdateSourceTrigger=PropertyChanged}" 
+                                                 FontFamily="Consolas" FontSize="10" Padding="2,1"
+                                                 VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                </Border>
+
                                 <!-- Status Bar -->
                                 <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" 
                                         Padding="6,2" Background="{StaticResource SecondaryBackgroundBrush}">
@@ -190,6 +210,8 @@
                                                    Foreground="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"/>
                                         <TextBlock Text=" │ RX: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
                                         <TextBlock Text="{Binding BytesReceived}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
+                                        <TextBlock Text=" │ TX: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
+                                        <TextBlock Text="{Binding BytesSent}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
                                         <TextBlock Text=" │ Logged: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
                                         <TextBlock Text="{Binding BytesLogged}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
                                     </StackPanel>

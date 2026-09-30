@@ -177,6 +177,7 @@ public class MainViewModel : ViewModelBase
             CommonBaudRates,
             connectAction: ConnectPort,
             disconnectAction: DisconnectPort,
+            sendAction: SendToPort,
             getLogDirectory: () => LogDirectory,
             getLogFileTemplate: () => LogFileNameTemplate);
     }
@@ -234,6 +235,14 @@ public class MainViewModel : ViewModelBase
         {
             tab.StatusText = $"Error: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Called by PortTabViewModel.SendCommand via callback.
+    /// </summary>
+    private void SendToPort(PortTabViewModel tab, byte[] data)
+    {
+        _portManager.WriteToPort(tab.PortName, data);
     }
 
     // ═══════════════════ Global Actions ═══════════════════
