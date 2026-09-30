@@ -48,4 +48,16 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    /// <summary>
+    /// Ensure all logs are flushed and serial connections closed when the application closes.
+    /// </summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
+        if (DataContext is MainViewModel mainVm)
+        {
+            mainVm.Shutdown();
+        }
+    }
 }

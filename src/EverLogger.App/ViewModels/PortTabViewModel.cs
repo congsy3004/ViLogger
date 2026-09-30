@@ -434,6 +434,8 @@ public class PortTabViewModel : ViewModelBase
                 ? BitConverter.ToString(data).Replace("-", " ")
                 : TxInput;
             AddLine($"TX>> {display}");
+
+            TxInput = string.Empty;
         }
         catch (Exception ex)
         {

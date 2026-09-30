@@ -66,7 +66,8 @@ public class SerialPortConnection : IDisposable
                 Handshake = Config.Handshake,
                 ReadBufferSize = Config.ReadBufferSize,
                 WriteBufferSize = Config.WriteBufferSize,
-                ReadTimeout = 100
+                ReadTimeout = 100,
+                WriteTimeout = 500
             };
 
             _port.Open();

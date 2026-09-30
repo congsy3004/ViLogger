@@ -19,6 +19,7 @@ public class MainViewModel : ViewModelBase
     private readonly SerialPortManager _portManager;
     private readonly DispatcherTimer _uiTimer;
     private readonly ConcurrentQueue<DataPacket> _dataQueue;
+    private readonly ConcurrentDictionary<string, PortTabViewModel> _activePorts = new(StringComparer.OrdinalIgnoreCase);
 
     private string _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
     private string _logFileNameTemplate = "{port}_{datetime}";
@@ -170,8 +171,9 @@ public class MainViewModel : ViewModelBase
         {
             var last = Ports[Ports.Count - 1];
             last.Cleanup();
-            if (last.IsConfigured)
+            if (!string.IsNullOrEmpty(last.PortName))
             {
+                _activePorts.TryRemove(last.PortName, out _);
                 _portManager.RemovePort(last.PortName);
             }
             Ports.RemoveAt(Ports.Count - 1);
@@ -188,7 +190,7 @@ public class MainViewModel : ViewModelBase
 
     private PortTabViewModel CreatePortTab()
     {
-        return new PortTabViewModel(
+        var tab = new PortTabViewModel(
             AvailablePorts,
             CommonBaudRates,
             connectAction: ConnectPort,
@@ -196,6 +198,30 @@ public class MainViewModel : ViewModelBase
             sendAction: SendToPort,
             getLogDirectory: () => LogDirectory,
             getLogFileTemplate: () => LogFileNameTemplate);
+
+        tab.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(PortTabViewModel.IsConfigured))
+            {
+                if (tab.IsConfigured && !string.IsNullOrEmpty(tab.PortName))
+                {
+                    _activePorts[tab.PortName] = tab;
+                }
+                else if (!tab.IsConfigured && !string.IsNullOrEmpty(tab.PortName))
+                {
+                    _activePorts.TryRemove(tab.PortName, out _);
+                    _portManager.RemovePort(tab.PortName);
+                }
+                UpdateGlobalStates();
+            }
+            else if (e.PropertyName == nameof(PortTabViewModel.IsConnected) ||
+                     e.PropertyName == nameof(PortTabViewModel.IsLogging))
+            {
+                UpdateGlobalStates();
+            }
+        };
+
+        return tab;
     }
 
     // ═══════════════════ Port Refresh ═══════════════════
@@ -225,10 +251,12 @@ public class MainViewModel : ViewModelBase
     {
         try
         {
-            if (!_portManager.Connections.ContainsKey(tab.PortName))
+            if (_portManager.Connections.ContainsKey(tab.PortName))
             {
-                _portManager.AddPort(tab.Config);
+                _portManager.RemovePort(tab.PortName);
             }
+            _portManager.AddPort(tab.Config);
+            _activePorts[tab.PortName] = tab;
             _portManager.OpenPort(tab.PortName);
             StatusBarText = $"{tab.PortName} connected";
         }
@@ -361,8 +389,7 @@ public class MainViewModel : ViewModelBase
     {
         _dataQueue.Enqueue(packet);
 
-        var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == packet.PortName);
-        if (tab != null && tab.IsLogging)
+        if (_activePorts.TryGetValue(packet.PortName, out var tab) && tab.IsLogging)
         {
             tab.EnqueueLogData(packet);
         }
@@ -372,8 +399,7 @@ public class MainViewModel : ViewModelBase
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == portName);
-            if (tab != null)
+            if (_activePorts.TryGetValue(portName, out var tab))
             {
                 bool isOpen = _portManager.Connections.TryGetValue(portName, out var conn) && conn.IsOpen;
                 tab.IsConnected = isOpen;
@@ -387,8 +413,7 @@ public class MainViewModel : ViewModelBase
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == portName);
-            if (tab != null)
+            if (_activePorts.TryGetValue(portName, out var tab))
             {
                 tab.StatusText = $"Error: {ex.Message}";
                 tab.IsConnected = false;
@@ -417,12 +442,24 @@ public class MainViewModel : ViewModelBase
         int packetsProcessed = 0;
         while (packetsProcessed < 5000 && _dataQueue.TryDequeue(out var packet))
         {
-            var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == packet.PortName);
-            if (tab != null)
+            if (_activePorts.TryGetValue(packet.PortName, out var tab))
             {
                 tab.AppendData(packet);
             }
             packetsProcessed++;
         }
+    }
+
+    /// <summary>
+    /// Performs graceful shutdown: flushes all log files and closes all ports.
+    /// </summary>
+    public void Shutdown()
+    {
+        _uiTimer.Stop();
+        foreach (var tab in Ports)
+        {
+            tab.Cleanup();
+        }
+        _portManager.Dispose();
     }
 }
