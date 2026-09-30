@@ -125,6 +125,13 @@
                                         <ComboBox ItemsSource="{Binding CommonBaudRates}" SelectedItem="{Binding SelectedBaudRate}" FontSize="12"/>
                                     </DockPanel>
 
+                                    <!-- Custom Name -->
+                                    <DockPanel Margin="0,4">
+                                        <TextBlock Text="Name:" Width="65" Style="{StaticResource SmallLabel}" FontSize="12"/>
+                                        <TextBox Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}" FontSize="12"
+                                                 ToolTip="Optional memorable name (e.g. GPS Module, Debug UART)"/>
+                                    </DockPanel>
+
                                     <!-- Apply Button -->
                                     <Button Content="✓ Apply" Command="{Binding ApplyConfigCommand}" 
                                             HorizontalAlignment="Center" Margin="0,20,0,0" 

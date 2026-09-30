@@ -31,6 +31,7 @@ public class PortTabViewModel : ViewModelBase
     // Port selection (unconfigured state)
     private PortInfo? _selectedPort;
     private int _selectedBaudRate = 115200;
+    private string _customName = string.Empty;
 
     // Callbacks to MainViewModel
     private readonly Action<PortTabViewModel> _connectAction;
@@ -115,13 +116,32 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _selectedBaudRate, value);
     }
 
+    /// <summary>
+    /// User-defined memorable name for this port (e.g. "GPS Module", "Debug UART").
+    /// </summary>
+    public string CustomName
+    {
+        get => _customName;
+        set => SetProperty(ref _customName, value);
+    }
+
     // ───────────────── Display Properties ─────────────────
 
-    public string DisplayLabel => !_isConfigured
-        ? "Not Configured"
-        : (string.IsNullOrWhiteSpace(_config.DisplayName)
-            ? _config.PortName
-            : $"{_config.PortName} - {_config.DisplayName}");
+    public string DisplayLabel
+    {
+        get
+        {
+            if (!_isConfigured) return "Not Configured";
+
+            string portPart = string.IsNullOrWhiteSpace(_config.DisplayName)
+                ? _config.PortName
+                : $"{_config.PortName} - {_config.DisplayName}";
+
+            return string.IsNullOrWhiteSpace(_customName)
+                ? portPart
+                : $"{_customName} ({_config.PortName})";
+        }
+    }
 
     public LogFormat[] LogFormatValues { get; } = Enum.GetValues<LogFormat>();
 
