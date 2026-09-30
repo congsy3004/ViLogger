@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Text;
 using System.Windows.Input;
 using EverLogger.App.Helpers;
@@ -15,19 +16,49 @@ public class PortTabViewModel : ViewModelBase
     private SerialPortConfig _config;
     private bool _isConnected;
     private bool _isLogging;
-    private string _statusText = string.Empty;
+    private string _statusText = "Disconnected";
     private long _bytesReceived;
     private long _bytesLogged;
+    private LogFormat _selectedDisplayFormat = LogFormat.Ascii;
+    private LogFormat _selectedLogFormat = LogFormat.Ascii;
+    private bool _autoScroll = true;
     private readonly StringBuilder _lineBuffer = new();
+    private LogFileWriter? _logWriter;
     private const int MaxMonitorLines = 5000;
     private const int TrimBatchSize = 500;
 
-    public PortTabViewModel(SerialPortConfig initialConfig)
+    // Callbacks to MainViewModel for port manager operations
+    private readonly Action<PortTabViewModel> _connectAction;
+    private readonly Action<PortTabViewModel> _disconnectAction;
+    private readonly Func<string> _getLogDirectory;
+    private readonly Func<string> _getLogFileTemplate;
+
+    public PortTabViewModel(
+        SerialPortConfig initialConfig,
+        Action<PortTabViewModel> connectAction,
+        Action<PortTabViewModel> disconnectAction,
+        Func<string> getLogDirectory,
+        Func<string> getLogFileTemplate)
     {
         _config = initialConfig;
+        _connectAction = connectAction;
+        _disconnectAction = disconnectAction;
+        _getLogDirectory = getLogDirectory;
+        _getLogFileTemplate = getLogFileTemplate;
+
         MonitorLines = new ObservableCollection<string>();
+
+        ConnectCommand = new RelayCommand(
+            () => _connectAction(this),
+            () => !IsConnected);
+        DisconnectCommand = new RelayCommand(
+            () => _disconnectAction(this),
+            () => IsConnected);
+        ToggleLogCommand = new RelayCommand(ToggleLog);
         ClearCommand = new RelayCommand(ClearMonitor);
     }
+
+    // ───────────────── Display Properties ─────────────────
 
     /// <summary>
     /// Friendly label: "COM3 - USB Serial Port" or just "COM3" if no description.
@@ -35,6 +66,10 @@ public class PortTabViewModel : ViewModelBase
     public string DisplayLabel => string.IsNullOrWhiteSpace(_config.DisplayName)
         ? _config.PortName
         : $"{_config.PortName} - {_config.DisplayName}";
+
+    public LogFormat[] LogFormatValues { get; } = Enum.GetValues<LogFormat>();
+
+    // ───────────────── Config Properties ─────────────────
 
     public SerialPortConfig Config
     {
@@ -120,10 +155,19 @@ public class PortTabViewModel : ViewModelBase
         }
     }
 
+    // ───────────────── State Properties ─────────────────
+
     public bool IsConnected
     {
         get => _isConnected;
-        set => SetProperty(ref _isConnected, value);
+        set
+        {
+            if (SetProperty(ref _isConnected, value))
+            {
+                ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)DisconnectCommand).RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public bool IsLogging
@@ -131,8 +175,6 @@ public class PortTabViewModel : ViewModelBase
         get => _isLogging;
         set => SetProperty(ref _isLogging, value);
     }
-
-    public ObservableCollection<string> MonitorLines { get; }
 
     public string StatusText
     {
@@ -152,9 +194,92 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _bytesLogged, value);
     }
 
+    // ───────────────── Per-Port Settings ─────────────────
+
+    public LogFormat SelectedDisplayFormat
+    {
+        get => _selectedDisplayFormat;
+        set => SetProperty(ref _selectedDisplayFormat, value);
+    }
+
+    public LogFormat SelectedLogFormat
+    {
+        get => _selectedLogFormat;
+        set => SetProperty(ref _selectedLogFormat, value);
+    }
+
+    public bool AutoScroll
+    {
+        get => _autoScroll;
+        set => SetProperty(ref _autoScroll, value);
+    }
+
+    public ObservableCollection<string> MonitorLines { get; }
+
+    // ───────────────── Commands ─────────────────
+
+    public ICommand ConnectCommand { get; }
+    public ICommand DisconnectCommand { get; }
+    public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
 
-    public void AppendData(DataPacket packet, LogFormat displayFormat)
+    /// <summary>
+    /// Toggle text for the log button.
+    /// </summary>
+    public string LogButtonText => IsLogging ? "Log OFF" : "Log ON";
+
+    // ───────────────── Logging ─────────────────
+
+    public void StartLogging()
+    {
+        if (IsLogging) return;
+
+        string logDir = _getLogDirectory();
+        string templateStr = _getLogFileTemplate();
+
+        try
+        {
+            Directory.CreateDirectory(logDir);
+        }
+        catch { return; }
+
+        string ext = SelectedLogFormat == LogFormat.Binary ? ".bin" : ".log";
+        var template = new LogFileNameTemplate(templateStr, ext);
+        _logWriter = new LogFileWriter(logDir, SelectedLogFormat, template, PortName);
+        _logWriter.Start();
+        IsLogging = true;
+        OnPropertyChanged(nameof(LogButtonText));
+    }
+
+    public void StopLogging()
+    {
+        if (!IsLogging) return;
+
+        _logWriter?.Stop();
+        _logWriter = null;
+        IsLogging = false;
+        OnPropertyChanged(nameof(LogButtonText));
+    }
+
+    private void ToggleLog()
+    {
+        if (IsLogging)
+            StopLogging();
+        else
+            StartLogging();
+    }
+
+    /// <summary>
+    /// Enqueue a data packet to the per-port log writer (called from background thread).
+    /// </summary>
+    public void EnqueueLogData(DataPacket packet)
+    {
+        _logWriter?.Queue.TryWrite(packet);
+    }
+
+    // ───────────────── Monitor Display ─────────────────
+
+    public void AppendData(DataPacket packet)
     {
         if (packet.Data == null || packet.Data.Length == 0) return;
         
@@ -164,7 +289,7 @@ public class PortTabViewModel : ViewModelBase
             BytesLogged += packet.Data.Length;
         }
 
-        switch (displayFormat)
+        switch (_selectedDisplayFormat)
         {
             case LogFormat.Ascii:
                 AppendAsciiData(packet.Data);
@@ -178,9 +303,6 @@ public class PortTabViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Handles ASCII data with proper line buffering for partial lines.
-    /// </summary>
     private void AppendAsciiData(byte[] data)
     {
         for (int i = 0; i < data.Length; i++)
@@ -188,13 +310,11 @@ public class PortTabViewModel : ViewModelBase
             char c = (char)data[i];
             if (c == '\n')
             {
-                // Emit the buffered line
                 AddLine(_lineBuffer.ToString());
                 _lineBuffer.Clear();
             }
             else if (c == '\r')
             {
-                // Skip carriage return (handle \r\n as just \n)
                 continue;
             }
             else
@@ -203,7 +323,6 @@ public class PortTabViewModel : ViewModelBase
             }
         }
 
-        // If buffer gets too large without a newline, flush it
         if (_lineBuffer.Length > 4096)
         {
             AddLine(_lineBuffer.ToString());
@@ -215,7 +334,6 @@ public class PortTabViewModel : ViewModelBase
     {
         MonitorLines.Add(line);
 
-        // Batch trim to avoid O(N) per-item removal
         if (MonitorLines.Count > MaxMonitorLines + TrimBatchSize)
         {
             for (int i = 0; i < TrimBatchSize; i++)

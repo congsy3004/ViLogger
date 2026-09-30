@@ -1,30 +1,26 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using EverLogger.App.ViewModels;
 
 namespace EverLogger.App;
 
 public partial class MainWindow : Window
 {
-    private readonly MainViewModel _viewModel;
-
     public MainWindow()
     {
         InitializeComponent();
-        _viewModel = new MainViewModel();
-        DataContext = _viewModel;
+        DataContext = new MainViewModel();
     }
 
     /// <summary>
-    /// Handles auto-scroll when the MonitorListBox items change.
-    /// Called from the TabControl's content to scroll to the bottom.
+    /// Auto-scroll handler checks the per-port AutoScroll setting.
     /// </summary>
     private void MonitorListBox_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (_viewModel.AutoScroll && e.ExtentHeightChange > 0)
+        if (e.ExtentHeightChange > 0 && sender is ListBox listBox && listBox.Items.Count > 0)
         {
-            if (sender is ListBox listBox && listBox.Items.Count > 0)
+            // Get the per-port AutoScroll from the ListBox's DataContext (PortTabViewModel)
+            if (listBox.DataContext is PortTabViewModel portVm && portVm.AutoScroll)
             {
                 listBox.ScrollIntoView(listBox.Items[listBox.Items.Count - 1]);
             }

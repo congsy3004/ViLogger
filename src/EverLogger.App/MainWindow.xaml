@@ -17,13 +17,15 @@
             <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Padding" Value="8,3"/>
             <Setter Property="Margin" Value="2"/>
+            <Setter Property="FontSize" Value="11"/>
         </Style>
 
         <Style TargetType="ComboBox">
             <Setter Property="Margin" Value="2"/>
-            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="FontSize" Value="11"/>
         </Style>
 
         <Style TargetType="TextBox">
@@ -32,63 +34,67 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="Margin" Value="2"/>
             <Setter Property="Padding" Value="2"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+
+        <Style x:Key="SmallLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="4,0,2,0"/>
         </Style>
     </Window.Resources>
 
     <DockPanel>
-        <!-- Toolbar -->
+        <!-- ═══════════ GENERAL CONFIG TOOLBAR ═══════════ -->
         <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Background="{StaticResource SecondaryBackgroundBrush}">
-            <StackPanel Orientation="Vertical" Margin="5">
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                    <Button Content="Refresh" Command="{Binding RefreshPortsCommand}"/>
-                    <ComboBox ItemsSource="{Binding AvailablePorts}" SelectedItem="{Binding SelectedNewPort}" Width="220"/>
-                    <ComboBox ItemsSource="{Binding CommonBaudRates}" SelectedItem="{Binding SelectedBaudRate}" Width="100"/>
-                    <Button Content="Add Port" Command="{Binding AddPortCommand}"/>
-                    <Button Content="Remove Port" Command="{Binding RemovePortCommand}"/>
-                    <Separator Width="10" Visibility="Hidden"/>
+            <StackPanel Orientation="Vertical" Margin="5,4">
+                <!-- Row 1: Port management + Global actions -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                    <Button Content="⟳ Rescan" Command="{Binding RefreshPortsCommand}"/>
+                    <ComboBox ItemsSource="{Binding AvailablePorts}" SelectedItem="{Binding SelectedNewPort}" Width="230"/>
+                    <ComboBox ItemsSource="{Binding CommonBaudRates}" SelectedItem="{Binding SelectedBaudRate}" Width="90"/>
+                    <Button Content="+ Add" Command="{Binding AddPortCommand}"/>
+                    <Button Content="− Remove" Command="{Binding RemovePortCommand}"/>
+                    <Separator Width="15" Visibility="Hidden"/>
                     
-                    <Button Content="Connect All" Command="{Binding ConnectAllCommand}"/>
-                    <Button Content="Disconnect All" Command="{Binding DisconnectAllCommand}"/>
-                    <Separator Width="10" Visibility="Hidden"/>
-
-                    <Button Content="Start Log" Command="{Binding StartLoggingCommand}"/>
-                    <Button Content="Stop Log" Command="{Binding StopLoggingCommand}"/>
-                    <Label Content="Display:" Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center"/>
-                    <ComboBox ItemsSource="{Binding LogFormatValues}" SelectedItem="{Binding SelectedLogFormat}" Width="80"/>
-                    <Label Content="Log As:" Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center"/>
-                    <ComboBox ItemsSource="{Binding LogFormatValues}" SelectedItem="{Binding SelectedFileLogFormat}" Width="80"/>
+                    <Button Content="▶ Connect All" Command="{Binding ConnectAllCommand}"/>
+                    <Button Content="■ Disconnect All" Command="{Binding DisconnectAllCommand}"/>
+                    <Separator Width="15" Visibility="Hidden"/>
+                    <Button Content="⏺ Log All ON" Command="{Binding LogAllOnCommand}"/>
+                    <Button Content="⏹ Log All OFF" Command="{Binding LogAllOffCommand}"/>
                 </StackPanel>
 
+                <!-- Row 2: Log settings + Layout -->
                 <StackPanel Orientation="Horizontal">
-                    <Label Content="Log Dir:" Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Log Dir:" Style="{StaticResource SmallLabel}"/>
                     <TextBox Text="{Binding LogDirectory}" Width="250" VerticalAlignment="Center"/>
-                    <Button Content="..." Command="{Binding BrowseLogDirectoryCommand}"/>
-                    <Label Content="File Template:" Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    <TextBox Text="{Binding LogFileNameTemplate}" Width="150" VerticalAlignment="Center"/>
-                    <Label Content="Layout:" Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    <ComboBox ItemsSource="{Binding LayoutOptions}" SelectedItem="{Binding SelectedLayout}" Width="65"/>
-                    <CheckBox Content="AutoScroll" IsChecked="{Binding AutoScroll}" Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                    <Button Content="..." Command="{Binding BrowseLogDirectoryCommand}" Padding="6,3"/>
+                    <TextBlock Text="File Name:" Style="{StaticResource SmallLabel}" Margin="12,0,2,0"/>
+                    <TextBox Text="{Binding LogFileNameTemplate}" Width="140" VerticalAlignment="Center"/>
+                    <TextBlock Text="Layout:" Style="{StaticResource SmallLabel}" Margin="12,0,2,0"/>
+                    <ComboBox ItemsSource="{Binding LayoutOptions}" SelectedItem="{Binding SelectedLayout}" Width="60"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- Status Bar -->
+        <!-- ═══════════ STATUS BAR ═══════════ -->
         <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource AccentBrush}" Foreground="White">
             <StatusBarItem>
-                <TextBlock Text="{Binding StatusBarText}"/>
+                <TextBlock Text="{Binding StatusBarText}" FontSize="11"/>
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Ports: "/>
-                    <TextBlock Text="{Binding Ports.Count}"/>
-                    <TextBlock Text=" | Logging: " Margin="10,0,0,0"/>
-                    <TextBlock Text="{Binding IsAllLogging, Converter={StaticResource BoolToStatusConverter}, ConverterParameter=logging}"/>
+                    <TextBlock Text="Ports: " FontSize="11"/>
+                    <TextBlock Text="{Binding Ports.Count}" FontSize="11"/>
+                    <TextBlock Text=" | Logging: " FontSize="11" Margin="10,0,0,0"/>
+                    <TextBlock Text="{Binding IsAllLogging, Converter={StaticResource BoolToStatusConverter}, ConverterParameter=logging}" FontSize="11"/>
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
 
-        <!-- Port Monitors Grid -->
-        <ItemsControl ItemsSource="{Binding Ports}" Margin="5">
+        <!-- ═══════════ PORT MONITORS GRID ═══════════ -->
+        <ItemsControl ItemsSource="{Binding Ports}" Margin="3">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <UniformGrid Columns="{Binding DataContext.LayoutColumns, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
@@ -99,32 +105,56 @@
                 <DataTemplate>
                     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="2" CornerRadius="3">
                         <DockPanel>
-                            <!-- Port Header -->
-                            <Border DockPanel.Dock="Top" Background="{StaticResource TertiaryBackgroundBrush}" Padding="8,4">
+                            <!-- ─── Port Header: Name + Description ─── -->
+                            <Border DockPanel.Dock="Top" Background="{StaticResource TertiaryBackgroundBrush}" Padding="6,3">
                                 <DockPanel>
-                                    <Ellipse Width="10" Height="10" Fill="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}" 
-                                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Ellipse Width="10" Height="10" 
+                                             Fill="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}" 
+                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <TextBlock Text="{Binding DisplayLabel}" FontWeight="SemiBold" FontSize="12"
                                                Foreground="{StaticResource PrimaryForegroundBrush}" VerticalAlignment="Center"/>
                                 </DockPanel>
                             </Border>
 
-                            <!-- Port Status Bar -->
-                            <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="5,3" Background="{StaticResource SecondaryBackgroundBrush}">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCommand}" Padding="8,2" FontSize="10"/>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding StatusText}" FontSize="10"
-                                                   Foreground="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"/>
-                                        <TextBlock Text=" | RX: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
-                                        <TextBlock Text="{Binding BytesReceived}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
-                                        <TextBlock Text=" | Logged: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
-                                        <TextBlock Text="{Binding BytesLogged}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
-                                    </StackPanel>
-                                </DockPanel>
+                            <!-- ─── Per-Port Controls ─── -->
+                            <Border DockPanel.Dock="Top" Background="{StaticResource SecondaryBackgroundBrush}" 
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="4,3">
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Content="Connect" Command="{Binding ConnectCommand}" Padding="6,2" FontSize="10"/>
+                                    <Button Content="Disconnect" Command="{Binding DisconnectCommand}" Padding="6,2" FontSize="10"/>
+                                    <Separator Width="8" Visibility="Hidden"/>
+                                    <Button Content="{Binding LogButtonText}" Command="{Binding ToggleLogCommand}" Padding="6,2" FontSize="10"/>
+                                    <Separator Width="8" Visibility="Hidden"/>
+                                    <TextBlock Text="Display:" Foreground="{StaticResource PrimaryForegroundBrush}" 
+                                               VerticalAlignment="Center" FontSize="10" Margin="2,0"/>
+                                    <ComboBox ItemsSource="{Binding LogFormatValues}" SelectedItem="{Binding SelectedDisplayFormat}" 
+                                              Width="60" FontSize="10" Padding="2,1"/>
+                                    <TextBlock Text="Log:" Foreground="{StaticResource PrimaryForegroundBrush}" 
+                                               VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
+                                    <ComboBox ItemsSource="{Binding LogFormatValues}" SelectedItem="{Binding SelectedLogFormat}" 
+                                              Width="60" FontSize="10" Padding="2,1"/>
+                                    <Separator Width="6" Visibility="Hidden"/>
+                                    <CheckBox Content="Auto↓" IsChecked="{Binding AutoScroll}" 
+                                              Foreground="{StaticResource PrimaryForegroundBrush}" 
+                                              VerticalAlignment="Center" FontSize="10" Margin="2,0"/>
+                                    <Button Content="Clear" Command="{Binding ClearCommand}" Padding="6,2" FontSize="10"/>
+                                </WrapPanel>
                             </Border>
 
-                            <!-- Monitor -->
+                            <!-- ─── Port Status Bar ─── -->
+                            <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" 
+                                    Padding="6,2" Background="{StaticResource SecondaryBackgroundBrush}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding StatusText}" FontSize="10"
+                                               Foreground="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"/>
+                                    <TextBlock Text=" │ RX: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{Binding BytesReceived}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
+                                    <TextBlock Text=" │ Logged: " Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{Binding BytesLogged}" Foreground="{StaticResource PrimaryForegroundBrush}" FontSize="10"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ─── Monitor Output ─── -->
                             <ListBox ItemsSource="{Binding MonitorLines}" 
                                      Background="{StaticResource PrimaryBackgroundBrush}" 
                                      Foreground="{StaticResource PrimaryForegroundBrush}"
