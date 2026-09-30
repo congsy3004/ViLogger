@@ -219,6 +219,8 @@
                                             <TextBlock Text="Name" Style="{StaticResource FormLabel}"/>
                                             <TextBox Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}" 
                                                      Height="28"
+                                                     VerticalContentAlignment="Center"
+                                                     Padding="8,0"
                                                      ToolTip="Optional identifier (e.g. GPS Module, IMU, Debug UART)"/>
                                         </DockPanel>
 
@@ -354,8 +356,10 @@
                                         <TextBox Text="{Binding TxInput, UpdateSourceTrigger=PropertyChanged}" 
                                                  FontFamily="Consolas, Cascadia Code, Courier New" 
                                                  FontSize="11" 
-                                                 Height="24" 
+                                                 Height="26" 
                                                  VerticalAlignment="Center"
+                                                 VerticalContentAlignment="Center"
+                                                 Padding="6,0"
                                                  ToolTip="Enter text or hex bytes (e.g. 48 65 6C 6C 6F)"/>
                                     </DockPanel>
                                 </Border>
