@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -23,6 +24,7 @@ public class MainViewModel : ViewModelBase
     private string _logFileNameTemplate = "{port}_{datetime}";
     private bool _isAllConnected;
     private bool _isAllLogging;
+    private bool _enterToSend = true;
     private string _statusBarText = "Ready";
     private LayoutOption _selectedLayout;
 
@@ -52,6 +54,10 @@ public class MainViewModel : ViewModelBase
         DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any(p => p.IsConnected));
         LogAllOnCommand = new RelayCommand(LogAllOn, () => Ports.Any(p => p.IsConfigured && !p.IsLogging));
         LogAllOffCommand = new RelayCommand(LogAllOff, () => Ports.Any(p => p.IsLogging));
+        ToggleConnectAllCommand = new RelayCommand(ToggleConnectAll, () => Ports.Any(p => p.IsConfigured));
+        ToggleLogAllCommand = new RelayCommand(ToggleLogAll, () => Ports.Any(p => p.IsConfigured));
+        OpenLogDirectoryCommand = new RelayCommand(OpenLogDirectory);
+        ToggleEnterToSendCommand = new RelayCommand(() => EnterToSend = !EnterToSend);
         
         BrowseLogDirectoryCommand = new RelayCommand(() =>
         {
@@ -124,6 +130,12 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _isAllLogging, value);
     }
 
+    public bool EnterToSend
+    {
+        get => _enterToSend;
+        set => SetProperty(ref _enterToSend, value);
+    }
+
     public string StatusBarText
     {
         get => _statusBarText;
@@ -137,6 +149,10 @@ public class MainViewModel : ViewModelBase
     public ICommand DisconnectAllCommand { get; }
     public ICommand LogAllOnCommand { get; }
     public ICommand LogAllOffCommand { get; }
+    public ICommand ToggleConnectAllCommand { get; }
+    public ICommand ToggleLogAllCommand { get; }
+    public ICommand OpenLogDirectoryCommand { get; }
+    public ICommand ToggleEnterToSendCommand { get; }
     public ICommand BrowseLogDirectoryCommand { get; }
 
     // ═══════════════════ Layout Management ═══════════════════
@@ -294,6 +310,51 @@ public class MainViewModel : ViewModelBase
         StatusBarText = "Logging stopped on all ports";
     }
 
+    private void ToggleConnectAll()
+    {
+        if (IsAllConnected)
+        {
+            DisconnectAll();
+        }
+        else
+        {
+            ConnectAll();
+        }
+    }
+
+    private void ToggleLogAll()
+    {
+        if (IsAllLogging)
+        {
+            LogAllOff();
+        }
+        else
+        {
+            LogAllOn();
+        }
+    }
+
+    private void OpenLogDirectory()
+    {
+        try
+        {
+            if (!Directory.Exists(LogDirectory))
+            {
+                Directory.CreateDirectory(LogDirectory);
+            }
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = LogDirectory,
+                UseShellExecute = true,
+                Verb = "open"
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusBarText = $"Failed to open directory: {ex.Message}";
+        }
+    }
+
     // ═══════════════════ Event Handlers ═══════════════════
 
     private void PortManager_DataReceived(DataPacket packet)
@@ -343,6 +404,8 @@ public class MainViewModel : ViewModelBase
         IsAllConnected = configured.Any() && configured.All(p => p.IsConnected);
         IsAllLogging = configured.Any(p => p.IsLogging);
 
+        ((RelayCommand)ToggleConnectAllCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)ToggleLogAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)ConnectAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)DisconnectAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)LogAllOnCommand).RaiseCanExecuteChanged();

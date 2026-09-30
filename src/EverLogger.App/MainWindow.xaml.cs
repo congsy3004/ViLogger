@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using EverLogger.App.ViewModels;
 
 namespace EverLogger.App;
@@ -23,6 +24,27 @@ public partial class MainWindow : Window
             if (listBox.DataContext is PortTabViewModel portVm && portVm.AutoScroll)
             {
                 listBox.ScrollIntoView(listBox.Items[listBox.Items.Count - 1]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles Enter key in Tx input to send if 'Enter to send' is enabled.
+    /// </summary>
+    private void TxTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (DataContext is MainViewModel mainVm && mainVm.EnterToSend)
+            {
+                if (sender is TextBox tb && tb.DataContext is PortTabViewModel portVm)
+                {
+                    if (portVm.SendCommand.CanExecute(null))
+                    {
+                        portVm.SendCommand.Execute(null);
+                        e.Handled = true;
+                    }
+                }
             }
         }
     }

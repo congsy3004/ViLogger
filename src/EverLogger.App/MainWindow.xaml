@@ -67,7 +67,7 @@
                                   Width="70" Height="26"/>
                     </StackPanel>
 
-                    <!-- Left: Port Rescan & Batch Controls -->
+                    <!-- Left: Port Rescan, Batch Toggles, & Enter to send -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="⟳ Rescan Ports" 
                                 Command="{Binding RefreshPortsCommand}" 
@@ -75,23 +75,77 @@
 
                         <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
 
-                        <Button Content="▶ Connect All" 
-                                Command="{Binding ConnectAllCommand}" 
-                                Style="{StaticResource SuccessButton}"
-                                Height="26" Padding="10,0"/>
-                        <Button Content="■ Disconnect All" 
-                                Command="{Binding DisconnectAllCommand}" 
-                                Style="{StaticResource DangerButton}"
-                                Height="26" Padding="10,0"/>
+                        <!-- 1. Connect All / Disconnect All Toggle Button -->
+                        <Button Command="{Binding ToggleConnectAllCommand}" 
+                                Height="26" Padding="12,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Setter Property="Content" Value="All Disconnected"/>
+                                    <Setter Property="Background" Value="#381E22"/>
+                                    <Setter Property="Foreground" Value="#F87171"/>
+                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
+                                    <Setter Property="ToolTip" Value="Click to connect all configured ports"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAllConnected}" Value="True">
+                                            <Setter Property="Content" Value="All Connected"/>
+                                            <Setter Property="Background" Value="#143A2C"/>
+                                            <Setter Property="Foreground" Value="#34D399"/>
+                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                            <Setter Property="ToolTip" Value="Click to disconnect all ports"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
 
                         <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
 
-                        <Button Content="⏺ Log All ON" 
-                                Command="{Binding LogAllOnCommand}" 
-                                Height="26" Padding="10,0"/>
-                        <Button Content="⏹ Log All OFF" 
-                                Command="{Binding LogAllOffCommand}" 
-                                Height="26" Padding="10,0"/>
+                        <!-- 2. Log All Toggle Button -->
+                        <Button Command="{Binding ToggleLogAllCommand}" 
+                                Height="26" Padding="12,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Setter Property="Content" Value="Log All OFF"/>
+                                    <Setter Property="Background" Value="#381E22"/>
+                                    <Setter Property="Foreground" Value="#F87171"/>
+                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
+                                    <Setter Property="ToolTip" Value="Click to start logging on all configured ports"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAllLogging}" Value="True">
+                                            <Setter Property="Content" Value="Log All ON"/>
+                                            <Setter Property="Background" Value="#143A2C"/>
+                                            <Setter Property="Foreground" Value="#34D399"/>
+                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                            <Setter Property="ToolTip" Value="Click to stop logging on all ports"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
+
+                        <!-- 4. Enter to send Toggle Button -->
+                        <Button Content="Enter to send" 
+                                Command="{Binding ToggleEnterToSendCommand}" 
+                                Height="26" Padding="12,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Setter Property="Background" Value="#381E22"/>
+                                    <Setter Property="Foreground" Value="#F87171"/>
+                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
+                                    <Setter Property="ToolTip" Value="Enter to send: Disabled (Click to enable)"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EnterToSend}" Value="True">
+                                            <Setter Property="Background" Value="#143A2C"/>
+                                            <Setter Property="Foreground" Value="#34D399"/>
+                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                            <Setter Property="ToolTip" Value="Enter to send: Enabled (Click to disable)"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                 </DockPanel>
 
@@ -100,13 +154,20 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Log Directory:" Style="{StaticResource HeaderLabel}"/>
                         <TextBox Text="{Binding LogDirectory}" 
-                                 Width="320" Height="25" 
+                                 Width="300" Height="25" 
                                  VerticalAlignment="Center"/>
                         <Button Content="..." 
                                 Command="{Binding BrowseLogDirectoryCommand}" 
                                 Width="28" Height="25" 
                                 Margin="2,0,0,0" Padding="0"
                                 ToolTip="Browse log directory"/>
+                        
+                        <!-- 3. Open Log Directory Button -->
+                        <Button Content="📁 Open Dir" 
+                                Command="{Binding OpenLogDirectoryCommand}" 
+                                Height="25" Padding="8,0" 
+                                Margin="4,0,0,0"
+                                ToolTip="Open log folder in Windows File Explorer"/>
 
                         <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="12,0,6,0"/>
 
@@ -354,6 +415,7 @@
                                         </Border>
 
                                         <TextBox Text="{Binding TxInput, UpdateSourceTrigger=PropertyChanged}" 
+                                                 PreviewKeyDown="TxTextBox_PreviewKeyDown"
                                                  FontFamily="Consolas, Cascadia Code, Courier New" 
                                                  FontSize="11" 
                                                  Height="26" 
