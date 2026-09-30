@@ -28,6 +28,7 @@ public class LayoutOption
 {
     public int Columns { get; }
     public int Rows { get; }
+    public int PortCount => Columns * Rows;
     public string DisplayText { get; }
 
     public LayoutOption(int columns, int rows)

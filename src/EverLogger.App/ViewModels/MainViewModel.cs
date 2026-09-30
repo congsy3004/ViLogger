@@ -19,9 +19,6 @@ public class MainViewModel : ViewModelBase
     private readonly DispatcherTimer _uiTimer;
     private readonly ConcurrentQueue<DataPacket> _dataQueue;
 
-    private PortTabViewModel? _selectedPort;
-    private PortInfo? _selectedNewPort;
-    private int _selectedBaudRate = 115200;
     private string _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
     private string _logFileNameTemplate = "{port}_{datetime}";
     private bool _isAllConnected;
@@ -45,17 +42,15 @@ public class MainViewModel : ViewModelBase
         {
             new LayoutOption(1, 1),
             new LayoutOption(2, 1),
-            new LayoutOption(1, 2),
+            new LayoutOption(3, 1),
             new LayoutOption(2, 2),
         };
         _selectedLayout = LayoutOptions[0];
 
         RefreshPortsCommand = new RelayCommand(RefreshPorts);
-        AddPortCommand = new RelayCommand(AddPort, () => SelectedNewPort != null);
-        RemovePortCommand = new RelayCommand(RemovePort, () => SelectedPort != null);
-        ConnectAllCommand = new RelayCommand(ConnectAll, () => Ports.Any());
-        DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any() && Ports.Any(p => p.IsConnected));
-        LogAllOnCommand = new RelayCommand(LogAllOn, () => Ports.Any());
+        ConnectAllCommand = new RelayCommand(ConnectAll, () => Ports.Any(p => p.IsConfigured && !p.IsConnected));
+        DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any(p => p.IsConnected));
+        LogAllOnCommand = new RelayCommand(LogAllOn, () => Ports.Any(p => p.IsConfigured && !p.IsLogging));
         LogAllOffCommand = new RelayCommand(LogAllOff, () => Ports.Any(p => p.IsLogging));
         
         BrowseLogDirectoryCommand = new RelayCommand(() =>
@@ -71,11 +66,12 @@ public class MainViewModel : ViewModelBase
             }
         });
 
-        _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) }; // ~30fps
+        _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
 
         RefreshPorts();
+        ApplyLayout(); // Create initial port panels
     }
 
     // ═══════════════════ Collections ═══════════════════
@@ -85,37 +81,7 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<int> CommonBaudRates { get; }
     public ObservableCollection<LayoutOption> LayoutOptions { get; }
 
-    // ═══════════════════ General Properties ═══════════════════
-
-    public PortTabViewModel? SelectedPort
-    {
-        get => _selectedPort;
-        set
-        {
-            if (SetProperty(ref _selectedPort, value))
-            {
-                ((RelayCommand)RemovePortCommand).RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    public PortInfo? SelectedNewPort
-    {
-        get => _selectedNewPort;
-        set
-        {
-            if (SetProperty(ref _selectedNewPort, value))
-            {
-                ((RelayCommand)AddPortCommand).RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    public int SelectedBaudRate
-    {
-        get => _selectedBaudRate;
-        set => SetProperty(ref _selectedBaudRate, value);
-    }
+    // ═══════════════════ Properties ═══════════════════
 
     public LayoutOption SelectedLayout
     {
@@ -126,6 +92,7 @@ public class MainViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(LayoutColumns));
                 OnPropertyChanged(nameof(LayoutRows));
+                ApplyLayout();
             }
         }
     }
@@ -166,15 +133,55 @@ public class MainViewModel : ViewModelBase
     // ═══════════════════ Commands ═══════════════════
 
     public ICommand RefreshPortsCommand { get; }
-    public ICommand AddPortCommand { get; }
-    public ICommand RemovePortCommand { get; }
     public ICommand ConnectAllCommand { get; }
     public ICommand DisconnectAllCommand { get; }
     public ICommand LogAllOnCommand { get; }
     public ICommand LogAllOffCommand { get; }
     public ICommand BrowseLogDirectoryCommand { get; }
 
-    // ═══════════════════ Port Management ═══════════════════
+    // ═══════════════════ Layout Management ═══════════════════
+
+    /// <summary>
+    /// Adjusts the Ports collection to match the selected layout's port count.
+    /// Adds empty panels or removes excess panels as needed.
+    /// </summary>
+    private void ApplyLayout()
+    {
+        int target = _selectedLayout.PortCount;
+
+        // Remove excess panels from the end
+        while (Ports.Count > target)
+        {
+            var last = Ports[Ports.Count - 1];
+            last.Cleanup();
+            if (last.IsConfigured)
+            {
+                _portManager.RemovePort(last.PortName);
+            }
+            Ports.RemoveAt(Ports.Count - 1);
+        }
+
+        // Add empty (unconfigured) panels
+        while (Ports.Count < target)
+        {
+            Ports.Add(CreatePortTab());
+        }
+
+        UpdateGlobalStates();
+    }
+
+    private PortTabViewModel CreatePortTab()
+    {
+        return new PortTabViewModel(
+            AvailablePorts,
+            CommonBaudRates,
+            connectAction: ConnectPort,
+            disconnectAction: DisconnectPort,
+            getLogDirectory: () => LogDirectory,
+            getLogFileTemplate: () => LogFileNameTemplate);
+    }
+
+    // ═══════════════════ Port Refresh ═══════════════════
 
     private void RefreshPorts()
     {
@@ -193,55 +200,10 @@ public class MainViewModel : ViewModelBase
                 AvailablePorts.Add(new PortInfo(port, ""));
             }
         }
-        if (AvailablePorts.Any())
-        {
-            SelectedNewPort = AvailablePorts.First();
-        }
-    }
-
-    private void AddPort()
-    {
-        if (SelectedNewPort == null) return;
-        
-        var config = new SerialPortConfig
-        {
-            PortName = SelectedNewPort.PortName,
-            BaudRate = SelectedBaudRate,
-            DisplayName = SelectedNewPort.Description
-        };
-        
-        var tab = new PortTabViewModel(
-            config,
-            connectAction: ConnectPort,
-            disconnectAction: DisconnectPort,
-            getLogDirectory: () => LogDirectory,
-            getLogFileTemplate: () => LogFileNameTemplate);
-        Ports.Add(tab);
-        SelectedPort = tab;
-        UpdateGlobalStates();
-    }
-
-    private void RemovePort()
-    {
-        if (SelectedPort == null) return;
-
-        string portName = SelectedPort.PortName;
-        SelectedPort.StopLogging();
-        if (SelectedPort.IsConnected)
-        {
-            _portManager.ClosePort(portName);
-        }
-        _portManager.RemovePort(portName);
-        Ports.Remove(SelectedPort);
-        SelectedPort = Ports.FirstOrDefault();
-        UpdateGlobalStates();
     }
 
     // ═══════════════════ Per-Port Callbacks ═══════════════════
 
-    /// <summary>
-    /// Called by PortTabViewModel.ConnectCommand via callback.
-    /// </summary>
     private void ConnectPort(PortTabViewModel tab)
     {
         try
@@ -260,14 +222,12 @@ public class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Called by PortTabViewModel.DisconnectCommand via callback.
-    /// </summary>
     private void DisconnectPort(PortTabViewModel tab)
     {
         try
         {
             _portManager.ClosePort(tab.PortName);
+            _portManager.RemovePort(tab.PortName);
             StatusBarText = $"{tab.PortName} disconnected";
         }
         catch (Exception ex)
@@ -282,11 +242,12 @@ public class MainViewModel : ViewModelBase
     {
         foreach (var tab in Ports)
         {
-            if (!tab.IsConnected)
+            if (tab.IsConfigured && !tab.IsConnected)
             {
                 ConnectPort(tab);
             }
         }
+        StatusBarText = "All configured ports connected";
     }
 
     private void DisconnectAll()
@@ -295,7 +256,7 @@ public class MainViewModel : ViewModelBase
         foreach (var tab in Ports)
         {
             tab.IsConnected = false;
-            tab.StatusText = "Disconnected";
+            tab.StatusText = tab.IsConfigured ? "Disconnected" : "Not configured";
         }
         IsAllConnected = false;
         StatusBarText = "All ports disconnected";
@@ -305,13 +266,13 @@ public class MainViewModel : ViewModelBase
     {
         foreach (var tab in Ports)
         {
-            if (!tab.IsLogging)
+            if (tab.IsConfigured && !tab.IsLogging)
             {
                 tab.StartLogging();
             }
         }
         UpdateGlobalStates();
-        StatusBarText = "Logging started on all ports";
+        StatusBarText = "Logging started on all configured ports";
     }
 
     private void LogAllOff()
@@ -330,8 +291,7 @@ public class MainViewModel : ViewModelBase
     {
         _dataQueue.Enqueue(packet);
 
-        // Feed per-port log writer directly (background thread, no UI)
-        var tab = Ports.FirstOrDefault(p => p.PortName == packet.PortName);
+        var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == packet.PortName);
         if (tab != null && tab.IsLogging)
         {
             tab.EnqueueLogData(packet);
@@ -342,7 +302,7 @@ public class MainViewModel : ViewModelBase
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            var tab = Ports.FirstOrDefault(p => p.PortName == portName);
+            var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == portName);
             if (tab != null)
             {
                 bool isOpen = _portManager.Connections.TryGetValue(portName, out var conn) && conn.IsOpen;
@@ -357,7 +317,7 @@ public class MainViewModel : ViewModelBase
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            var tab = Ports.FirstOrDefault(p => p.PortName == portName);
+            var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == portName);
             if (tab != null)
             {
                 tab.StatusText = $"Error: {ex.Message}";
@@ -370,21 +330,14 @@ public class MainViewModel : ViewModelBase
 
     private void UpdateGlobalStates()
     {
-        if (Ports.Count == 0)
-        {
-            IsAllConnected = false;
-            IsAllLogging = false;
-        }
-        else
-        {
-            IsAllConnected = Ports.All(p => p.IsConnected);
-            IsAllLogging = Ports.Any(p => p.IsLogging);
-        }
+        var configured = Ports.Where(p => p.IsConfigured).ToList();
+        IsAllConnected = configured.Any() && configured.All(p => p.IsConnected);
+        IsAllLogging = configured.Any(p => p.IsLogging);
+
         ((RelayCommand)ConnectAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)DisconnectAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)LogAllOnCommand).RaiseCanExecuteChanged();
         ((RelayCommand)LogAllOffCommand).RaiseCanExecuteChanged();
-        ((RelayCommand)RemovePortCommand).RaiseCanExecuteChanged();
     }
 
     private void UiTimer_Tick(object? sender, EventArgs e)
@@ -392,7 +345,7 @@ public class MainViewModel : ViewModelBase
         int packetsProcessed = 0;
         while (packetsProcessed < 5000 && _dataQueue.TryDequeue(out var packet))
         {
-            var tab = Ports.FirstOrDefault(p => p.PortName == packet.PortName);
+            var tab = Ports.FirstOrDefault(p => p.IsConfigured && p.PortName == packet.PortName);
             if (tab != null)
             {
                 tab.AppendData(packet);

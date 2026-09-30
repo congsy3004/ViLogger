@@ -14,9 +14,10 @@ namespace EverLogger.App.ViewModels;
 public class PortTabViewModel : ViewModelBase
 {
     private SerialPortConfig _config;
+    private bool _isConfigured;
     private bool _isConnected;
     private bool _isLogging;
-    private string _statusText = "Disconnected";
+    private string _statusText = "Not configured";
     private long _bytesReceived;
     private long _bytesLogged;
     private LogFormat _selectedDisplayFormat = LogFormat.Ascii;
@@ -27,49 +28,104 @@ public class PortTabViewModel : ViewModelBase
     private const int MaxMonitorLines = 5000;
     private const int TrimBatchSize = 500;
 
-    // Callbacks to MainViewModel for port manager operations
+    // Port selection (unconfigured state)
+    private PortInfo? _selectedPort;
+    private int _selectedBaudRate = 115200;
+
+    // Callbacks to MainViewModel
     private readonly Action<PortTabViewModel> _connectAction;
     private readonly Action<PortTabViewModel> _disconnectAction;
     private readonly Func<string> _getLogDirectory;
     private readonly Func<string> _getLogFileTemplate;
 
+    // Shared collections from MainViewModel
+    public ObservableCollection<PortInfo> AvailablePorts { get; }
+    public ObservableCollection<int> CommonBaudRates { get; }
+
     public PortTabViewModel(
-        SerialPortConfig initialConfig,
+        ObservableCollection<PortInfo> availablePorts,
+        ObservableCollection<int> commonBaudRates,
         Action<PortTabViewModel> connectAction,
         Action<PortTabViewModel> disconnectAction,
         Func<string> getLogDirectory,
         Func<string> getLogFileTemplate)
     {
-        _config = initialConfig;
+        _config = new SerialPortConfig();
         _connectAction = connectAction;
         _disconnectAction = disconnectAction;
         _getLogDirectory = getLogDirectory;
         _getLogFileTemplate = getLogFileTemplate;
+        AvailablePorts = availablePorts;
+        CommonBaudRates = commonBaudRates;
 
         MonitorLines = new ObservableCollection<string>();
 
+        // Config commands
+        ApplyConfigCommand = new RelayCommand(ApplyConfig, () => _selectedPort != null);
+        ResetConfigCommand = new RelayCommand(ResetConfig, () => IsConfigured && !IsConnected);
+
+        // Port control commands
         ConnectCommand = new RelayCommand(
             () => _connectAction(this),
-            () => !IsConnected);
+            () => IsConfigured && !IsConnected);
         DisconnectCommand = new RelayCommand(
             () => _disconnectAction(this),
             () => IsConnected);
-        ToggleLogCommand = new RelayCommand(ToggleLog);
+        ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
+    }
+
+    // ───────────────── Config State ─────────────────
+
+    public bool IsConfigured
+    {
+        get => _isConfigured;
+        private set
+        {
+            if (SetProperty(ref _isConfigured, value))
+            {
+                ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)ResetConfigCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)ToggleLogCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The selected port in the config dropdown (unconfigured state).
+    /// </summary>
+    public PortInfo? SelectedPort
+    {
+        get => _selectedPort;
+        set
+        {
+            if (SetProperty(ref _selectedPort, value))
+            {
+                ((RelayCommand)ApplyConfigCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The selected baud rate in the config dropdown (unconfigured state).
+    /// </summary>
+    public int SelectedBaudRate
+    {
+        get => _selectedBaudRate;
+        set => SetProperty(ref _selectedBaudRate, value);
     }
 
     // ───────────────── Display Properties ─────────────────
 
-    /// <summary>
-    /// Friendly label: "COM3 - USB Serial Port" or just "COM3" if no description.
-    /// </summary>
-    public string DisplayLabel => string.IsNullOrWhiteSpace(_config.DisplayName)
-        ? _config.PortName
-        : $"{_config.PortName} - {_config.DisplayName}";
+    public string DisplayLabel => !_isConfigured
+        ? "Not Configured"
+        : (string.IsNullOrWhiteSpace(_config.DisplayName)
+            ? _config.PortName
+            : $"{_config.PortName} - {_config.DisplayName}");
 
     public LogFormat[] LogFormatValues { get; } = Enum.GetValues<LogFormat>();
 
-    // ───────────────── Config Properties ─────────────────
+    // ───────────────── Serial Config ─────────────────
 
     public SerialPortConfig Config
     {
@@ -77,31 +133,7 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _config, value);
     }
 
-    public string PortName
-    {
-        get => _config.PortName;
-        set
-        {
-            if (_config.PortName != value)
-            {
-                Config = _config with { PortName = value };
-                OnPropertyChanged();
-            }
-        }
-    }
-
-    public int BaudRate
-    {
-        get => _config.BaudRate;
-        set
-        {
-            if (_config.BaudRate != value)
-            {
-                Config = _config with { BaudRate = value };
-                OnPropertyChanged();
-            }
-        }
-    }
+    public string PortName => _config.PortName;
 
     public int DataBits
     {
@@ -166,6 +198,7 @@ public class PortTabViewModel : ViewModelBase
             {
                 ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)DisconnectCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)ResetConfigCommand).RaiseCanExecuteChanged();
             }
         }
     }
@@ -218,21 +251,47 @@ public class PortTabViewModel : ViewModelBase
 
     // ───────────────── Commands ─────────────────
 
+    public ICommand ApplyConfigCommand { get; }
+    public ICommand ResetConfigCommand { get; }
     public ICommand ConnectCommand { get; }
     public ICommand DisconnectCommand { get; }
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
 
-    /// <summary>
-    /// Toggle text for the log button.
-    /// </summary>
     public string LogButtonText => IsLogging ? "Log OFF" : "Log ON";
+
+    // ───────────────── Config Actions ─────────────────
+
+    private void ApplyConfig()
+    {
+        if (_selectedPort == null) return;
+
+        Config = new SerialPortConfig
+        {
+            PortName = _selectedPort.PortName,
+            BaudRate = _selectedBaudRate,
+            DisplayName = _selectedPort.Description
+        };
+
+        IsConfigured = true;
+        StatusText = "Disconnected";
+        OnPropertyChanged(nameof(DisplayLabel));
+        OnPropertyChanged(nameof(PortName));
+    }
+
+    private void ResetConfig()
+    {
+        StopLogging();
+        IsConfigured = false;
+        StatusText = "Not configured";
+        OnPropertyChanged(nameof(DisplayLabel));
+    }
 
     // ───────────────── Logging ─────────────────
 
     public void StartLogging()
     {
-        if (IsLogging) return;
+        if (IsLogging || !IsConfigured) return;
 
         string logDir = _getLogDirectory();
         string templateStr = _getLogFileTemplate();
@@ -269,9 +328,6 @@ public class PortTabViewModel : ViewModelBase
             StartLogging();
     }
 
-    /// <summary>
-    /// Enqueue a data packet to the per-port log writer (called from background thread).
-    /// </summary>
     public void EnqueueLogData(DataPacket packet)
     {
         _logWriter?.Queue.TryWrite(packet);
@@ -349,5 +405,17 @@ public class PortTabViewModel : ViewModelBase
         _lineBuffer.Clear();
         BytesReceived = 0;
         BytesLogged = 0;
+    }
+
+    /// <summary>
+    /// Cleanup when this panel is removed (layout shrinks).
+    /// </summary>
+    public void Cleanup()
+    {
+        StopLogging();
+        if (IsConnected)
+        {
+            _disconnectAction(this);
+        }
     }
 }
