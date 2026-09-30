@@ -428,6 +428,12 @@ public class PortTabViewModel : ViewModelBase
 
             _sendAction(this, data);
             BytesSent += data.Length;
+
+            // Display sent data in monitor
+            string display = SendAsHex
+                ? BitConverter.ToString(data).Replace("-", " ")
+                : TxInput;
+            AddLine($"TX>> {display}");
         }
         catch (Exception ex)
         {
