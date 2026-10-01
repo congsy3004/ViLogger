@@ -17,6 +17,7 @@ public class PortTabViewModel : ViewModelBase
     private bool _isConfigured;
     private bool _isConnected;
     private bool _isLogging;
+    private bool _showTimestamp = true;
     private string _statusText = "Not configured";
     private long _bytesReceived;
     private long _bytesLogged;
@@ -92,6 +93,7 @@ public class PortTabViewModel : ViewModelBase
             () => IsConfigured);
         ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
+        ToggleTimestampCommand = new RelayCommand(() => ShowTimestamp = !ShowTimestamp);
         RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
 
         // Tx command
@@ -254,6 +256,12 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _isLogging, value);
     }
 
+    public bool ShowTimestamp
+    {
+        get => _showTimestamp;
+        set => SetProperty(ref _showTimestamp, value);
+    }
+
     public string StatusText
     {
         get => _statusText;
@@ -303,6 +311,7 @@ public class PortTabViewModel : ViewModelBase
     public ICommand ToggleConnectCommand { get; }
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
+    public ICommand ToggleTimestampCommand { get; }
     public ICommand SendCommand { get; }
     public ICommand RemoveThisPortCommand { get; }
 
@@ -530,8 +539,10 @@ public class PortTabViewModel : ViewModelBase
 
     private void AddLine(string line)
     {
-        string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-        MonitorLines.Add($"[{timestamp}] {line}");
+        string entry = _showTimestamp
+            ? $"[{DateTime.Now:HH:mm:ss.fff}] {line}"
+            : line;
+        MonitorLines.Add(entry);
 
         if (MonitorLines.Count > MaxMonitorLines + TrimBatchSize)
         {
