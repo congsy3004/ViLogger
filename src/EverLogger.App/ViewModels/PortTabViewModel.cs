@@ -108,6 +108,7 @@ public class PortTabViewModel : ViewModelBase
             if (SetProperty(ref _isConfigured, value))
             {
                 ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)ToggleConnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)ResetConfigCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)ToggleLogCommand).RaiseCanExecuteChanged();
             }
