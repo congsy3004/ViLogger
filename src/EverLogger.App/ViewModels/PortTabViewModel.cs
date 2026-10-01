@@ -87,6 +87,9 @@ public class PortTabViewModel : ViewModelBase
         DisconnectCommand = new RelayCommand(
             () => _disconnectAction(this),
             () => IsConnected);
+        ToggleConnectCommand = new RelayCommand(
+            () => { if (IsConnected) _disconnectAction(this); else _connectAction(this); },
+            () => IsConfigured);
         ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
         RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
@@ -237,6 +240,7 @@ public class PortTabViewModel : ViewModelBase
             {
                 ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)DisconnectCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)ToggleConnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)ResetConfigCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
             }
@@ -295,6 +299,7 @@ public class PortTabViewModel : ViewModelBase
     public ICommand ResetConfigCommand { get; }
     public ICommand ConnectCommand { get; }
     public ICommand DisconnectCommand { get; }
+    public ICommand ToggleConnectCommand { get; }
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
     public ICommand SendCommand { get; }
@@ -524,7 +529,8 @@ public class PortTabViewModel : ViewModelBase
 
     private void AddLine(string line)
     {
-        MonitorLines.Add(line);
+        string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+        MonitorLines.Add($"[{timestamp}] {line}");
 
         if (MonitorLines.Count > MaxMonitorLines + TrimBatchSize)
         {

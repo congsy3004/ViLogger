@@ -42,7 +42,6 @@ public class MainViewModel : ViewModelBase
         AvailablePorts = new ObservableCollection<PortInfo>();
         CommonBaudRates = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
         AddPortCommand = new RelayCommand(AddPort, () => Ports.Count < 4);
-        RefreshPortsCommand = new RelayCommand(RefreshPorts);
         ConnectAllCommand = new RelayCommand(ConnectAll, () => Ports.Any(p => p.IsConfigured && !p.IsConnected));
         DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any(p => p.IsConnected));
         LogAllOnCommand = new RelayCommand(LogAllOn, () => Ports.Any(p => p.IsConfigured && !p.IsLogging));
@@ -83,14 +82,14 @@ public class MainViewModel : ViewModelBase
     // ═══════════════════ Properties ═══════════════════
 
     /// <summary>
-    /// Columns = 1 for 1-3 ports, 2 for 4 ports (2x2).
+    /// Columns: 1 port=1, 2 ports=2 (side by side), 3 ports=3 (side by side), 4 ports=2 (2×2).
     /// </summary>
-    public int LayoutColumns => Ports.Count <= 3 ? 1 : 2;
+    public int LayoutColumns => Ports.Count <= 1 ? 1 : (Ports.Count <= 3 ? Ports.Count : 2);
 
     /// <summary>
-    /// Rows = number of ports for 1-3, 2 for 4 ports (2x2).
+    /// Rows: 1–3 ports stay in 1 row, 4 ports use 2 rows (2×2).
     /// </summary>
-    public int LayoutRows => Ports.Count <= 1 ? 1 : (Ports.Count <= 3 ? Ports.Count : 2);
+    public int LayoutRows => Ports.Count <= 3 ? 1 : 2;
 
     public string LogDirectory
     {
@@ -131,7 +130,6 @@ public class MainViewModel : ViewModelBase
     // ═══════════════════ Commands ═══════════════════
 
     public ICommand AddPortCommand { get; }
-    public ICommand RefreshPortsCommand { get; }
     public ICommand ConnectAllCommand { get; }
     public ICommand DisconnectAllCommand { get; }
     public ICommand LogAllOnCommand { get; }
@@ -150,6 +148,7 @@ public class MainViewModel : ViewModelBase
     private void AddPort()
     {
         if (Ports.Count >= 4) return;
+        RefreshPorts(); // Auto-rescan so newly plugged devices appear in the new port's dropdown
         Ports.Add(CreatePortTab());
         OnPropertyChanged(nameof(LayoutColumns));
         OnPropertyChanged(nameof(LayoutRows));
