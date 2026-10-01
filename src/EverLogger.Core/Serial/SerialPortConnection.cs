@@ -114,9 +114,12 @@ public class SerialPortConnection : IDisposable
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is InvalidOperationException)
             {
+                // Stop the loop and fire ErrorOccurred only.
+                // Do NOT fire ConnectionStateChanged here: at this point _port.IsOpen is
+                // still true (Close() hasn't been called yet), so the VM handler would
+                // override IsConnected=false back to true — causing the "stuck green" bug.
                 _running = false;
                 ErrorOccurred?.Invoke(Config.PortName, ex);
-                ConnectionStateChanged?.Invoke(Config.PortName);
             }
             catch (Exception ex)
             {

@@ -410,10 +410,19 @@ public class MainViewModel : ViewModelBase
         {
             if (_activePorts.TryGetValue(portName, out var tab))
             {
-                tab.StatusText = $"Error: {ex.Message}";
                 tab.IsConnected = false;
+                tab.StatusText = $"Error: {ex.Message}";
+                if (tab.IsLogging) tab.StopLogging();
             }
-            StatusBarText = $"Error on {portName}: {ex.Message}";
+            StatusBarText = $"Port {portName} disconnected unexpectedly. Click Connect to retry.";
+
+            // Clean up the stale connection so the user can reconnect by clicking the button.
+            // ClosePort/RemovePort are wrapped in try/catch because the port may already
+            // be in an unusable state (the very reason ErrorOccurred fired).
+            try { _portManager.ClosePort(portName); } catch { }
+            try { _portManager.RemovePort(portName); } catch { }
+            _activePorts.TryRemove(portName, out _);
+
             UpdateGlobalStates();
         });
     }
