@@ -61,10 +61,6 @@
                 <DockPanel Grid.Row="0" Margin="0,0,0,5">
                     <!-- Right: Port Management Buttons -->
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="− Port" 
-                                Command="{Binding RemovePortCommand}" 
-                                Height="26" Padding="10,0"
-                                ToolTip="Remove the last port panel. Minimum is 1 port."/>
                         <Button Content="+ Add Port" 
                                 Command="{Binding AddPortCommand}" 
                                 Height="26" Padding="10,0"
@@ -300,6 +296,18 @@
                                 </Border>
                             </Border>
 
+                            <!-- ✕ Close button for unconfigured panel (top-right overlay) -->
+                            <Button Command="{Binding RemoveThisPortCommand}"
+                                    Style="{StaticResource ToolButton}"
+                                    Content="✕"
+                                    Width="22" Height="22"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="0,4,4,0"
+                                    Foreground="{StaticResource MutedForegroundBrush}"
+                                    Visibility="{Binding IsConfigured, Converter={StaticResource InvBoolToVis}}"
+                                    ToolTip="Close this port panel"/>
+
                             <!-- ╔═════════════════════════════════════════╗ -->
                             <!-- ║  CONFIGURED STATE: Monitor + Controls  ║ -->
                             <!-- ╚═════════════════════════════════════════╝ -->
@@ -312,13 +320,20 @@
                                         BorderThickness="0,0,0,1" 
                                         Padding="8,5">
                                     <DockPanel>
-                                        <!-- Right: Reset (✕) Button -->
+                                        <!-- Right: Close (✕) and Reset (↺) Buttons -->
                                         <Button DockPanel.Dock="Right" 
                                                 Content="✕" 
+                                                Command="{Binding RemoveThisPortCommand}" 
+                                                Style="{StaticResource ToolButton}"
+                                                Width="22" Height="22" 
+                                                ToolTip="Close and remove this port panel"
+                                                Foreground="{StaticResource MutedForegroundBrush}"/>
+                                        <Button DockPanel.Dock="Right" 
+                                                Content="↺" 
                                                 Command="{Binding ResetConfigCommand}" 
                                                 Style="{StaticResource ToolButton}"
                                                 Width="22" Height="22" 
-                                                ToolTip="Reconfigure or change port"
+                                                ToolTip="Reset configuration (disconnect first)"
                                                 Foreground="{StaticResource MutedForegroundBrush}"/>
 
                                         <!-- Left: Indicator dot + Display Label -->

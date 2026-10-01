@@ -42,7 +42,6 @@ public class MainViewModel : ViewModelBase
         AvailablePorts = new ObservableCollection<PortInfo>();
         CommonBaudRates = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
         AddPortCommand = new RelayCommand(AddPort, () => Ports.Count < 4);
-        RemovePortCommand = new RelayCommand(RemoveLastPort, () => Ports.Count > 1);
         RefreshPortsCommand = new RelayCommand(RefreshPorts);
         ConnectAllCommand = new RelayCommand(ConnectAll, () => Ports.Any(p => p.IsConfigured && !p.IsConnected));
         DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any(p => p.IsConnected));
@@ -132,7 +131,6 @@ public class MainViewModel : ViewModelBase
     // ═══════════════════ Commands ═══════════════════
 
     public ICommand AddPortCommand { get; }
-    public ICommand RemovePortCommand { get; }
     public ICommand RefreshPortsCommand { get; }
     public ICommand ConnectAllCommand { get; }
     public ICommand DisconnectAllCommand { get; }
@@ -156,28 +154,31 @@ public class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(LayoutColumns));
         OnPropertyChanged(nameof(LayoutRows));
         ((RelayCommand)AddPortCommand).RaiseCanExecuteChanged();
-        ((RelayCommand)RemovePortCommand).RaiseCanExecuteChanged();
+        // Refresh each tab's RemoveThisPortCommand so it enables when count > 1
+        foreach (var p in Ports)
+            ((RelayCommand)p.RemoveThisPortCommand).RaiseCanExecuteChanged();
         UpdateGlobalStates();
     }
 
     /// <summary>
-    /// Removes the last port panel (min 1). Cleans up connection and logging.
+    /// Removes a specific port panel. Called by each panel's close button.
     /// </summary>
-    private void RemoveLastPort()
+    private void RemovePort(PortTabViewModel tab)
     {
         if (Ports.Count <= 1) return;
-        var last = Ports[Ports.Count - 1];
-        last.Cleanup();
-        if (!string.IsNullOrEmpty(last.PortName))
+        tab.Cleanup();
+        if (!string.IsNullOrEmpty(tab.PortName))
         {
-            _activePorts.TryRemove(last.PortName, out _);
-            _portManager.RemovePort(last.PortName);
+            _activePorts.TryRemove(tab.PortName, out _);
+            _portManager.RemovePort(tab.PortName);
         }
-        Ports.RemoveAt(Ports.Count - 1);
+        Ports.Remove(tab);
         OnPropertyChanged(nameof(LayoutColumns));
         OnPropertyChanged(nameof(LayoutRows));
         ((RelayCommand)AddPortCommand).RaiseCanExecuteChanged();
-        ((RelayCommand)RemovePortCommand).RaiseCanExecuteChanged();
+        // Refresh remaining tabs' RemoveThisPortCommand (disable when only 1 left)
+        foreach (var p in Ports)
+            ((RelayCommand)p.RemoveThisPortCommand).RaiseCanExecuteChanged();
         UpdateGlobalStates();
     }
 
@@ -189,6 +190,8 @@ public class MainViewModel : ViewModelBase
             connectAction: ConnectPort,
             disconnectAction: DisconnectPort,
             sendAction: SendToPort,
+            removeAction: RemovePort,
+            canRemove: () => Ports.Count > 1,
             getLogDirectory: () => LogDirectory,
             getLogFileTemplate: () => LogFileNameTemplate);
 

@@ -37,6 +37,8 @@ public class PortTabViewModel : ViewModelBase
     private readonly Action<PortTabViewModel> _connectAction;
     private readonly Action<PortTabViewModel> _disconnectAction;
     private readonly Action<PortTabViewModel, byte[]> _sendAction;
+    private readonly Action<PortTabViewModel> _removeAction;
+    private readonly Func<bool> _canRemoveFunc;
     private readonly Func<string> _getLogDirectory;
     private readonly Func<string> _getLogFileTemplate;
 
@@ -56,6 +58,8 @@ public class PortTabViewModel : ViewModelBase
         Action<PortTabViewModel> connectAction,
         Action<PortTabViewModel> disconnectAction,
         Action<PortTabViewModel, byte[]> sendAction,
+        Action<PortTabViewModel> removeAction,
+        Func<bool> canRemove,
         Func<string> getLogDirectory,
         Func<string> getLogFileTemplate)
     {
@@ -63,6 +67,8 @@ public class PortTabViewModel : ViewModelBase
         _connectAction = connectAction;
         _disconnectAction = disconnectAction;
         _sendAction = sendAction;
+        _removeAction = removeAction;
+        _canRemoveFunc = canRemove;
         _getLogDirectory = getLogDirectory;
         _getLogFileTemplate = getLogFileTemplate;
         AvailablePorts = availablePorts;
@@ -83,6 +89,7 @@ public class PortTabViewModel : ViewModelBase
             () => IsConnected);
         ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
+        RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
 
         // Tx command
         SendCommand = new RelayCommand(Send, () => IsConnected && !string.IsNullOrEmpty(TxInput));
@@ -145,13 +152,13 @@ public class PortTabViewModel : ViewModelBase
         {
             if (!_isConfigured) return "Not Configured";
 
-            string portPart = string.IsNullOrWhiteSpace(_config.DisplayName)
+            string recognizedName = string.IsNullOrWhiteSpace(_config.DisplayName)
                 ? _config.PortName
-                : $"{_config.PortName} - {_config.DisplayName}";
+                : _config.DisplayName;
 
             return string.IsNullOrWhiteSpace(_customName)
-                ? portPart
-                : $"{_customName} ({_config.PortName})";
+                ? recognizedName
+                : $"{_customName} - {recognizedName}";
         }
     }
 
@@ -291,6 +298,7 @@ public class PortTabViewModel : ViewModelBase
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
     public ICommand SendCommand { get; }
+    public ICommand RemoveThisPortCommand { get; }
 
     public string LogButtonText => IsLogging ? "Log OFF" : "Log ON";
 
