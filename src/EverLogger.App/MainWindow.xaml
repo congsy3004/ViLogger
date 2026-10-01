@@ -259,6 +259,46 @@
                                                       Height="28"/>
                                         </DockPanel>
 
+                                        <!-- Form: Data Bits -->
+                                        <DockPanel Margin="0,0,0,10">
+                                            <TextBlock Text="Data Bits" Style="{StaticResource FormLabel}"
+                                                       ToolTip="Number of data bits per byte. Most devices use 8."/>
+                                            <ComboBox ItemsSource="{Binding DataBitsValues}"
+                                                      SelectedItem="{Binding DataBits}"
+                                                      Height="28"
+                                                      ToolTip="Number of data bits per byte. Most devices use 8."/>
+                                        </DockPanel>
+
+                                        <!-- Form: Parity -->
+                                        <DockPanel Margin="0,0,0,10">
+                                            <TextBlock Text="Parity" Style="{StaticResource FormLabel}"
+                                                       ToolTip="Parity error-checking. None = no parity bit (most common). Even/Odd = simple error detection."/>
+                                            <ComboBox ItemsSource="{Binding ParityValues}"
+                                                      SelectedItem="{Binding SelectedParity}"
+                                                      Height="28"
+                                                      ToolTip="Parity error-checking. None = no parity bit (most common). Even/Odd = simple error detection."/>
+                                        </DockPanel>
+
+                                        <!-- Form: Stop Bits -->
+                                        <DockPanel Margin="0,0,0,10">
+                                            <TextBlock Text="Stop Bits" Style="{StaticResource FormLabel}"
+                                                       ToolTip="Number of stop bits that signal end of byte. Most devices use 1."/>
+                                            <ComboBox ItemsSource="{Binding StopBitsValues}"
+                                                      SelectedItem="{Binding SelectedStopBits}"
+                                                      Height="28"
+                                                      ToolTip="Number of stop bits that signal end of byte. Most devices use 1."/>
+                                        </DockPanel>
+
+                                        <!-- Form: Handshake (Flow Control) -->
+                                        <DockPanel Margin="0,0,0,10">
+                                            <TextBlock Text="Handshake" Style="{StaticResource FormLabel}"
+                                                       ToolTip="Hardware/software flow control. None = no flow control. RTS/CTS = hardware handshake. XOnXOff = software handshake."/>
+                                            <ComboBox ItemsSource="{Binding HandshakeValues}"
+                                                      SelectedItem="{Binding SelectedHandshake}"
+                                                      Height="28"
+                                                      ToolTip="Hardware/software flow control. None = no flow control. RTS/CTS = hardware handshake. XOnXOff = software handshake."/>
+                                        </DockPanel>
+
                                         <!-- Form: Memorable Name -->
                                         <DockPanel Margin="0,0,0,18">
                                             <TextBlock Text="Name" Style="{StaticResource FormLabel}"/>

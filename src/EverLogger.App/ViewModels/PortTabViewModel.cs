@@ -169,6 +169,10 @@ public class PortTabViewModel : ViewModelBase
     }
 
     public LogFormat[] LogFormatValues { get; } = Enum.GetValues<LogFormat>();
+    public int[] DataBitsValues { get; } = { 5, 6, 7, 8 };
+    public Parity[] ParityValues { get; } = Enum.GetValues<Parity>();
+    public StopBits[] StopBitsValues { get; } = Enum.GetValues<StopBits>();
+    public Handshake[] HandshakeValues { get; } = Enum.GetValues<Handshake>();
 
     // ───────────────── Serial Config ─────────────────
 
