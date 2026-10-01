@@ -27,7 +27,7 @@ public class MainViewModel : ViewModelBase
     private bool _isAllLogging;
     private bool _enterToSend = true;
     private string _statusBarText = "Ready";
-    private LayoutOption _selectedLayout;
+    // No _selectedLayout field; layout is computed automatically from Ports.Count
 
     public MainViewModel()
     {
@@ -41,15 +41,8 @@ public class MainViewModel : ViewModelBase
         Ports = new ObservableCollection<PortTabViewModel>();
         AvailablePorts = new ObservableCollection<PortInfo>();
         CommonBaudRates = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
-        LayoutOptions = new ObservableCollection<LayoutOption>
-        {
-            new LayoutOption(1, 1),
-            new LayoutOption(2, 1),
-            new LayoutOption(3, 1),
-            new LayoutOption(2, 2),
-        };
-        _selectedLayout = LayoutOptions[0];
-
+        AddPortCommand = new RelayCommand(AddPort, () => Ports.Count < 4);
+        RemovePortCommand = new RelayCommand(RemoveLastPort, () => Ports.Count > 1);
         RefreshPortsCommand = new RelayCommand(RefreshPorts);
         ConnectAllCommand = new RelayCommand(ConnectAll, () => Ports.Any(p => p.IsConfigured && !p.IsConnected));
         DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any(p => p.IsConnected));
@@ -78,7 +71,9 @@ public class MainViewModel : ViewModelBase
         _uiTimer.Start();
 
         RefreshPorts();
-        ApplyLayout(); // Create initial port panels
+        // Start with one port panel
+        Ports.Add(CreatePortTab());
+        UpdateGlobalStates();
     }
 
     // ═══════════════════ Collections ═══════════════════
@@ -86,26 +81,17 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<PortTabViewModel> Ports { get; }
     public ObservableCollection<PortInfo> AvailablePorts { get; }
     public ObservableCollection<int> CommonBaudRates { get; }
-    public ObservableCollection<LayoutOption> LayoutOptions { get; }
-
     // ═══════════════════ Properties ═══════════════════
 
-    public LayoutOption SelectedLayout
-    {
-        get => _selectedLayout;
-        set
-        {
-            if (SetProperty(ref _selectedLayout, value))
-            {
-                OnPropertyChanged(nameof(LayoutColumns));
-                OnPropertyChanged(nameof(LayoutRows));
-                ApplyLayout();
-            }
-        }
-    }
+    /// <summary>
+    /// Columns = 1 for 1-3 ports, 2 for 4 ports (2x2).
+    /// </summary>
+    public int LayoutColumns => Ports.Count <= 3 ? 1 : 2;
 
-    public int LayoutColumns => _selectedLayout.Columns;
-    public int LayoutRows => _selectedLayout.Rows;
+    /// <summary>
+    /// Rows = number of ports for 1-3, 2 for 4 ports (2x2).
+    /// </summary>
+    public int LayoutRows => Ports.Count <= 1 ? 1 : (Ports.Count <= 3 ? Ports.Count : 2);
 
     public string LogDirectory
     {
@@ -145,6 +131,8 @@ public class MainViewModel : ViewModelBase
 
     // ═══════════════════ Commands ═══════════════════
 
+    public ICommand AddPortCommand { get; }
+    public ICommand RemovePortCommand { get; }
     public ICommand RefreshPortsCommand { get; }
     public ICommand ConnectAllCommand { get; }
     public ICommand DisconnectAllCommand { get; }
@@ -156,35 +144,40 @@ public class MainViewModel : ViewModelBase
     public ICommand ToggleEnterToSendCommand { get; }
     public ICommand BrowseLogDirectoryCommand { get; }
 
-    // ═══════════════════ Layout Management ═══════════════════
+    // ═══════════════════ Port Management ═══════════════════
 
     /// <summary>
-    /// Adjusts the Ports collection to match the selected layout's port count.
-    /// Adds empty panels or removes excess panels as needed.
+    /// Adds a new empty port panel (max 4). Layout is recalculated automatically.
     /// </summary>
-    private void ApplyLayout()
+    private void AddPort()
     {
-        int target = _selectedLayout.PortCount;
+        if (Ports.Count >= 4) return;
+        Ports.Add(CreatePortTab());
+        OnPropertyChanged(nameof(LayoutColumns));
+        OnPropertyChanged(nameof(LayoutRows));
+        ((RelayCommand)AddPortCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)RemovePortCommand).RaiseCanExecuteChanged();
+        UpdateGlobalStates();
+    }
 
-        // Remove excess panels from the end
-        while (Ports.Count > target)
+    /// <summary>
+    /// Removes the last port panel (min 1). Cleans up connection and logging.
+    /// </summary>
+    private void RemoveLastPort()
+    {
+        if (Ports.Count <= 1) return;
+        var last = Ports[Ports.Count - 1];
+        last.Cleanup();
+        if (!string.IsNullOrEmpty(last.PortName))
         {
-            var last = Ports[Ports.Count - 1];
-            last.Cleanup();
-            if (!string.IsNullOrEmpty(last.PortName))
-            {
-                _activePorts.TryRemove(last.PortName, out _);
-                _portManager.RemovePort(last.PortName);
-            }
-            Ports.RemoveAt(Ports.Count - 1);
+            _activePorts.TryRemove(last.PortName, out _);
+            _portManager.RemovePort(last.PortName);
         }
-
-        // Add empty (unconfigured) panels
-        while (Ports.Count < target)
-        {
-            Ports.Add(CreatePortTab());
-        }
-
+        Ports.RemoveAt(Ports.Count - 1);
+        OnPropertyChanged(nameof(LayoutColumns));
+        OnPropertyChanged(nameof(LayoutRows));
+        ((RelayCommand)AddPortCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)RemovePortCommand).RaiseCanExecuteChanged();
         UpdateGlobalStates();
     }
 

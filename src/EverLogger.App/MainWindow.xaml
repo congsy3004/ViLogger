@@ -59,12 +59,16 @@
 
                 <!-- Row 1: Global Actions & Layout -->
                 <DockPanel Grid.Row="0" Margin="0,0,0,5">
-                    <!-- Right: Layout Switcher -->
+                    <!-- Right: Port Management Buttons -->
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Layout:" Style="{StaticResource HeaderLabel}"/>
-                        <ComboBox ItemsSource="{Binding LayoutOptions}" 
-                                  SelectedItem="{Binding SelectedLayout}" 
-                                  Width="70" Height="26"/>
+                        <Button Content="− Port" 
+                                Command="{Binding RemovePortCommand}" 
+                                Height="26" Padding="10,0"
+                                ToolTip="Remove the last port panel. Minimum is 1 port."/>
+                        <Button Content="+ Add Port" 
+                                Command="{Binding AddPortCommand}" 
+                                Height="26" Padding="10,0"
+                                ToolTip="Add a new port panel (max 4). Layout auto-adjusts: 1=1×1, 2=side by side, 3=3 columns, 4=2×2."/>
                     </StackPanel>
 
                     <!-- Left: Port Rescan, Batch Toggles, & Enter to send -->
