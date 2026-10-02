@@ -15,6 +15,7 @@ public class SerialPortConnection : IDisposable
     private SerialPortStream? _port;
     private Thread? _readThread;
     private volatile bool _running;
+    private volatile bool _intentionalClose;
     private readonly byte[] _buffer = new byte[8192];
     private bool _disposed;
 
@@ -114,12 +115,15 @@ public class SerialPortConnection : IDisposable
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is InvalidOperationException)
             {
-                // Stop the loop and fire ErrorOccurred only.
-                // Do NOT fire ConnectionStateChanged here: at this point _port.IsOpen is
-                // still true (Close() hasn't been called yet), so the VM handler would
-                // override IsConnected=false back to true — causing the "stuck green" bug.
                 _running = false;
-                ErrorOccurred?.Invoke(Config.PortName, ex);
+
+                // Suppress ErrorOccurred during intentional Close() — the port being
+                // closed by us is not an unexpected disconnect; ConnectionStateChanged
+                // will be fired by Close() instead.
+                if (!_intentionalClose)
+                {
+                    ErrorOccurred?.Invoke(Config.PortName, ex);
+                }
             }
             catch (Exception ex)
             {
@@ -153,28 +157,30 @@ public class SerialPortConnection : IDisposable
     /// </summary>
     public void Close()
     {
+        _intentionalClose = true;
         _running = false;
-
-        if (_readThread != null && _readThread.IsAlive)
-        {
-            _readThread.Join(500);
-        }
 
         if (_port != null && _port.IsOpen)
         {
             try
             {
+                // Close the port first — this immediately interrupts any blocking Read()
+                // in the read thread, causing it to throw and exit quickly.
                 _port.Close();
             }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke(Config.PortName, ex);
-            }
-            finally
-            {
-                ConnectionStateChanged?.Invoke(Config.PortName);
-            }
+            catch { }
         }
+
+        // Brief join: the read thread exits as soon as it catches the IOException
+        // from port.Close() or sees _running=false. 50ms is sufficient.
+        if (_readThread != null && _readThread.IsAlive)
+        {
+            _readThread.Join(50);
+        }
+
+        ConnectionStateChanged?.Invoke(Config.PortName);
+
+        _intentionalClose = false;
     }
 
     /// <summary>
