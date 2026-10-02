@@ -349,8 +349,12 @@ public class PortTabViewModel : ViewModelBase
             {
                 if (value == "HEX" && previous == "ASCII")
                 {
-                    // ASCII text → space-separated uppercase hex bytes
-                    byte[] bytes = System.Text.Encoding.ASCII.GetBytes(_txInput);
+                    // Decode display tokens to real bytes, then convert to hex
+                    string decoded = _txInput
+                        .Replace("<CR><LF>", "\r\n")
+                        .Replace("<CR>",     "\r")
+                        .Replace("<LF>",     "\n");
+                    byte[] bytes = System.Text.Encoding.ASCII.GetBytes(decoded);
                     TxInput = BitConverter.ToString(bytes).Replace("-", " ");
                 }
                 else if (value == "ASCII" && previous == "HEX")
@@ -403,6 +407,16 @@ public class PortTabViewModel : ViewModelBase
                 for (int i = 0; i < raw.Length; i += 2)
                     parts.Add(raw.Substring(i, Math.Min(2, raw.Length - i)));
                 value = string.Join(" ", parts);
+            }
+            else
+            {
+                // ASCII mode: replace any actual CR/LF characters (e.g. from paste) with
+                // explicit display tokens so the TextBox stays single-line and non-ambiguous.
+                // Order: CRLF first, then standalone CR, then standalone LF.
+                value = value
+                    .Replace("\r\n", "<CR><LF>")
+                    .Replace("\r",   "<CR>")
+                    .Replace("\n",   "<LF>");
             }
 
             if (SetProperty(ref _txInput, value))
@@ -512,18 +526,23 @@ public class PortTabViewModel : ViewModelBase
             {
                 string lineEnding = SelectedLineEnding switch
                 {
-                    "CR" => "\r",
-                    "LF" => "\n",
+                    "CR"   => "\r",
+                    "LF"   => "\n",
                     "CRLF" => "\r\n",
-                    _ => ""
+                    _      => ""
                 };
-                data = System.Text.Encoding.ASCII.GetBytes(TxInput + lineEnding);
+                // Decode display tokens back to real CR/LF bytes before encoding
+                string text = TxInput
+                    .Replace("<CR><LF>", "\r\n")
+                    .Replace("<CR>",     "\r")
+                    .Replace("<LF>",     "\n");
+                data = System.Text.Encoding.ASCII.GetBytes(text + lineEnding);
             }
 
             _sendAction(this, data);
             BytesSent += data.Length;
 
-            // Display sent data in monitor
+            // Echo in monitor — show the token representation so the user sees exactly what was sent
             string display = SendAsHex
                 ? BitConverter.ToString(data).Replace("-", " ")
                 : TxInput;

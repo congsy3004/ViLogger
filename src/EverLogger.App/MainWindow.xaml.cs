@@ -68,11 +68,11 @@ public partial class MainWindow : Window
             }
             else
             {
-                // ASCII mode: insert \r, then \n if the last char is already \r
-                if (current.Length > 0 && current[current.Length - 1] == '\r')
-                    portVm.TxInput = current + "\n";
+                // ASCII mode: insert <CR> token, then <LF> token if last token was <CR>
+                if (current.EndsWith("<CR>"))
+                    portVm.TxInput = current + "<LF>";
                 else
-                    portVm.TxInput = current + "\r";
+                    portVm.TxInput = current + "<CR>";
             }
             tb.CaretIndex = portVm.TxInput.Length;
         }
