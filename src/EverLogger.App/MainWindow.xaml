@@ -36,11 +36,11 @@
         </Style>
 
         <Style x:Key="MetricPill" TargetType="Border">
-            <Setter Property="Background" Value="#1C1C22"/>
+            <Setter Property="Background" Value="#1C2333"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="7,2"/>
             <Setter Property="Margin" Value="3,0"/>
         </Style>
     </Window.Resources>
@@ -140,7 +140,7 @@
 
         <!-- ═══════════ GLOBAL STATUS BAR ═══════════ -->
         <Border DockPanel.Dock="Bottom" 
-                Background="#141417" 
+                Background="#0B101A" 
                 BorderBrush="{StaticResource BorderBrush}" 
                 BorderThickness="0,1,0,0" 
                 Padding="8,4">
@@ -193,10 +193,10 @@
                             <!-- ╚═════════════════════════════════════════╝ -->
                             <Border Visibility="{Binding IsConfigured, Converter={StaticResource InvBoolToVis}}"
                                     Background="{StaticResource PrimaryBackgroundBrush}">
-                                <Border Background="#1C1C21" 
+                                <Border Background="#131921" 
                                         BorderBrush="{StaticResource BorderBrush}" 
                                         BorderThickness="1" 
-                                        CornerRadius="8" 
+                                        CornerRadius="10" 
                                         Padding="28,24" 
                                         Width="360" 
                                         HorizontalAlignment="Center" 
@@ -204,8 +204,8 @@
                                     <StackPanel>
                                         <!-- Header Icon + Title -->
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
-                                            <Border Width="28" Height="28" CornerRadius="14" Background="#1E3A5F" Margin="0,0,8,0">
-                                                <TextBlock Text="⚡" FontSize="14" Foreground="#60A5FA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <Border Width="30" Height="30" CornerRadius="15" Background="#162032" Margin="0,0,8,0">
+                                                <TextBlock Text="⚡" FontSize="14" Foreground="#539BF5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                             <TextBlock Text="Configure Port" FontSize="16" FontWeight="SemiBold"
                                                        Foreground="{StaticResource PrimaryForegroundBrush}" 
@@ -302,7 +302,7 @@
                                 
                                 <!-- ─── 1. Header Bar: Port Name + State + Reset ─── -->
                                 <Border DockPanel.Dock="Top" 
-                                        Background="#222227" 
+                                        Background="#1C2333" 
                                         BorderBrush="{StaticResource BorderBrush}" 
                                         BorderThickness="0,0,0,1" 
                                         Padding="8,5">
@@ -452,7 +452,7 @@
 
                                 <!-- ─── 3. TX Transmit Bar ─── -->
                                 <Border DockPanel.Dock="Bottom" 
-                                        Background="#18181C" 
+                                        Background="#0D1117" 
                                         BorderBrush="{StaticResource BorderBrush}" 
                                         BorderThickness="0,1,0,0" 
                                         Padding="6,4">
@@ -481,13 +481,13 @@
                                                   Width="65" Height="24" FontSize="10" Padding="3,1" Margin="4,0,4,0"/>
 
                                         <Border DockPanel.Dock="Left" 
-                                                Background="#0C253B" 
-                                                BorderBrush="#1D4ED8" 
+                                                Background="#162032" 
+                                                BorderBrush="#22303E" 
                                                 BorderThickness="1" 
-                                                CornerRadius="3" 
-                                                Padding="4,2" 
+                                                CornerRadius="4" 
+                                                Padding="5,2" 
                                                 Margin="0,0,6,0">
-                                            <TextBlock Text="TX" Foreground="#38BDF8" FontWeight="Bold" FontSize="10"/>
+                                            <TextBlock Text="TX" Foreground="#539BF5" FontWeight="Bold" FontSize="10"/>
                                         </Border>
 
                                         <TextBox Text="{Binding TxInput, UpdateSourceTrigger=PropertyChanged}" 
@@ -503,7 +503,7 @@
 
                                 <!-- ─── 4. Metrics & Status Bar ─── -->
                                 <Border DockPanel.Dock="Bottom" 
-                                        Background="#141417" 
+                                        Background="#0B101A" 
                                         BorderBrush="{StaticResource BorderBrush}" 
                                         BorderThickness="0,1,0,0" 
                                         Padding="6,3">
@@ -512,19 +512,19 @@
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                                             <Border Style="{StaticResource MetricPill}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="RX: " Foreground="#34D399" FontSize="10" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="RX: " Foreground="#57AB5A" FontSize="10" FontWeight="SemiBold"/>
                                                     <TextBlock Text="{Binding BytesReceived, StringFormat={}{0:N0} B}" FontSize="10" Foreground="{StaticResource PrimaryForegroundBrush}"/>
                                                 </StackPanel>
                                             </Border>
                                             <Border Style="{StaticResource MetricPill}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="TX: " Foreground="#38BDF8" FontSize="10" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="TX: " Foreground="#539BF5" FontSize="10" FontWeight="SemiBold"/>
                                                     <TextBlock Text="{Binding BytesSent, StringFormat={}{0:N0} B}" FontSize="10" Foreground="{StaticResource PrimaryForegroundBrush}"/>
                                                 </StackPanel>
                                             </Border>
                                             <Border Style="{StaticResource MetricPill}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="LOG: " Foreground="#A78BFA" FontSize="10" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="LOG: " Foreground="#8B7CF6" FontSize="10" FontWeight="SemiBold"/>
                                                     <TextBlock Text="{Binding BytesLogged, StringFormat={}{0:N0} B}" FontSize="10" Foreground="{StaticResource PrimaryForegroundBrush}"/>
                                                 </StackPanel>
                                             </Border>
@@ -543,7 +543,7 @@
                                 <!-- ─── 5. High-Performance Monospace Terminal Monitor ─── -->
                                 <ListBox ItemsSource="{Binding MonitorLines}" 
                                          Background="{StaticResource TerminalBackgroundBrush}" 
-                                         Foreground="#E4E4E7"
+                                         Foreground="#CDD9E5"
                                          FontFamily="Consolas, Cascadia Code, Courier New" 
                                          FontSize="11"
                                          VirtualizingStackPanel.IsVirtualizing="True"
