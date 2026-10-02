@@ -475,10 +475,10 @@
                                                   SelectedItem="{Binding SelectedLineEnding}" 
                                                   Width="60" Height="24" FontSize="10" Padding="3,1" Margin="3,0"/>
                                         
-                                        <CheckBox DockPanel.Dock="Right" 
-                                                  Content="Hex" 
-                                                  IsChecked="{Binding SendAsHex}" 
-                                                  VerticalAlignment="Center" FontSize="10" Margin="4,0,4,0"/>
+                                        <ComboBox DockPanel.Dock="Right" 
+                                                  ItemsSource="{Binding TxModeOptions}"
+                                                  SelectedItem="{Binding TxMode}"
+                                                  Width="65" Height="24" FontSize="10" Padding="3,1" Margin="4,0,4,0"/>
 
                                         <Border DockPanel.Dock="Left" 
                                                 Background="#0C253B" 

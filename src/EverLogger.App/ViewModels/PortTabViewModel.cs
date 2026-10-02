@@ -46,7 +46,7 @@ public class PortTabViewModel : ViewModelBase
     // Tx state
     private string _txInput = string.Empty;
     private string _selectedLineEnding = "CRLF";
-    private bool _sendAsHex;
+    private string _txMode = "ASCII";
     private long _bytesSent;
 
     // Shared collections from MainViewModel
@@ -323,12 +323,80 @@ public class PortTabViewModel : ViewModelBase
     // ───────────────── Tx Properties ─────────────────
 
     public string[] LineEndingOptions { get; } = ["None", "CR", "LF", "CRLF"];
+    public string[] TxModeOptions { get; } = ["ASCII", "HEX"];
+
+    public string TxMode
+    {
+        get => _txMode;
+        set
+        {
+            if (_txMode == value) return;
+            string previous = _txMode;
+            _txMode = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SendAsHex));
+
+            // Convert existing TX input when switching modes
+            if (!string.IsNullOrEmpty(_txInput))
+            {
+                if (value == "HEX" && previous == "ASCII")
+                {
+                    // ASCII text → space-separated uppercase hex bytes
+                    byte[] bytes = System.Text.Encoding.ASCII.GetBytes(_txInput);
+                    TxInput = BitConverter.ToString(bytes).Replace("-", " ");
+                }
+                else if (value == "ASCII" && previous == "HEX")
+                {
+                    // Hex bytes → ASCII text (best effort; clear on failure)
+                    try
+                    {
+                        string raw = new string(
+                            _txInput.Where(c => "0123456789ABCDEFabcdef".Contains(c)).ToArray());
+                        if (raw.Length > 0 && raw.Length % 2 == 0)
+                        {
+                            byte[] bytes = new byte[raw.Length / 2];
+                            for (int i = 0; i < bytes.Length; i++)
+                                bytes[i] = Convert.ToByte(raw.Substring(i * 2, 2), 16);
+                            TxInput = System.Text.Encoding.ASCII.GetString(bytes);
+                        }
+                        else
+                        {
+                            TxInput = string.Empty;
+                        }
+                    }
+                    catch
+                    {
+                        TxInput = string.Empty;
+                    }
+                }
+            }
+
+            ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>True when TxMode is "HEX".</summary>
+    public bool SendAsHex => _txMode == "HEX";
 
     public string TxInput
     {
         get => _txInput;
         set
         {
+            if (SendAsHex)
+            {
+                // Keep only valid hex characters, uppercase
+                string raw = new string(
+                    value.Where(c => "0123456789ABCDEFabcdef".Contains(c)).ToArray())
+                    .ToUpperInvariant();
+
+                // Re-group into pairs separated by a space: "AB4D3D" → "AB 4D 3D"
+                var parts = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < raw.Length; i += 2)
+                    parts.Add(raw.Substring(i, Math.Min(2, raw.Length - i)));
+                value = string.Join(" ", parts);
+            }
+
             if (SetProperty(ref _txInput, value))
             {
                 ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
@@ -340,12 +408,6 @@ public class PortTabViewModel : ViewModelBase
     {
         get => _selectedLineEnding;
         set => SetProperty(ref _selectedLineEnding, value);
-    }
-
-    public bool SendAsHex
-    {
-        get => _sendAsHex;
-        set => SetProperty(ref _sendAsHex, value);
     }
 
     public long BytesSent
