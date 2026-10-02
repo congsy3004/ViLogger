@@ -106,28 +106,6 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-
-                        <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
-
-                        <!-- 3. Enter to send Toggle Button -->
-                        <Button Content="Enter to send"
-                                Command="{Binding ToggleEnterToSendCommand}"
-                                Width="105" Height="26">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                    <Setter Property="Background" Value="#381E22"/>
-                                    <Setter Property="Foreground" Value="#F87171"/>
-                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding EnterToSend}" Value="True">
-                                            <Setter Property="Background" Value="#143A2C"/>
-                                            <Setter Property="Foreground" Value="#34D399"/>
-                                            <Setter Property="BorderBrush" Value="#065F46"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
                     </StackPanel>
                 </DockPanel>
 
@@ -464,12 +442,19 @@
                                         BorderThickness="0,1,0,0" 
                                         Padding="6,4">
                                     <DockPanel>
+                                        <!-- Send icon button (far right) -->
                                         <Button DockPanel.Dock="Right" 
-                                                Content="Send" 
+                                                Content="➤" 
                                                 Command="{Binding SendCommand}" 
                                                 Style="{StaticResource AccentButton}"
-                                                Width="55" Height="24" FontSize="11" Margin="4,0,0,0"/>
-                                        
+                                                Width="32" Height="24" FontSize="13" Margin="4,0,0,0"/>
+
+                                        <!-- Send macro keyboard shortcut selector -->
+                                        <ComboBox DockPanel.Dock="Right" 
+                                                  ItemsSource="{Binding SendMacroOptions}"
+                                                  SelectedItem="{Binding SendMacro}"
+                                                  Width="90" Height="24" FontSize="10" Padding="3,1" Margin="3,0"/>
+
                                         <ComboBox DockPanel.Dock="Right" 
                                                   ItemsSource="{Binding LineEndingOptions}" 
                                                   SelectedItem="{Binding SelectedLineEnding}" 

@@ -25,7 +25,6 @@ public class MainViewModel : ViewModelBase
     private string _logFileNameTemplate = "{port}_{datetime}";
     private bool _isAllConnected;
     private bool _isAllLogging;
-    private bool _enterToSend = true;
     private string _statusBarText = "Ready";
     // No _selectedLayout field; layout is computed automatically from Ports.Count
 
@@ -49,7 +48,6 @@ public class MainViewModel : ViewModelBase
         ToggleConnectAllCommand = new RelayCommand(ToggleConnectAll, () => Ports.Any(p => p.IsConfigured));
         ToggleLogAllCommand = new RelayCommand(ToggleLogAll, () => Ports.Any(p => p.IsConfigured));
         OpenLogDirectoryCommand = new RelayCommand(OpenLogDirectory);
-        ToggleEnterToSendCommand = new RelayCommand(() => EnterToSend = !EnterToSend);
         
         BrowseLogDirectoryCommand = new RelayCommand(() =>
         {
@@ -115,12 +113,6 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _isAllLogging, value);
     }
 
-    public bool EnterToSend
-    {
-        get => _enterToSend;
-        set => SetProperty(ref _enterToSend, value);
-    }
-
     public string StatusBarText
     {
         get => _statusBarText;
@@ -137,7 +129,6 @@ public class MainViewModel : ViewModelBase
     public ICommand ToggleConnectAllCommand { get; }
     public ICommand ToggleLogAllCommand { get; }
     public ICommand OpenLogDirectoryCommand { get; }
-    public ICommand ToggleEnterToSendCommand { get; }
     public ICommand BrowseLogDirectoryCommand { get; }
 
     // ═══════════════════ Port Management ═══════════════════

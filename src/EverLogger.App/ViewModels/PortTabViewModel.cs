@@ -324,6 +324,14 @@ public class PortTabViewModel : ViewModelBase
 
     public string[] LineEndingOptions { get; } = ["None", "CR", "LF", "CRLF"];
     public string[] TxModeOptions { get; } = ["ASCII", "HEX"];
+    public string[] SendMacroOptions { get; } = ["Ctrl+Enter", "Alt+Enter", "Shift+Enter"];
+
+    private string _sendMacro = "Ctrl+Enter";
+    public string SendMacro
+    {
+        get => _sendMacro;
+        set => SetProperty(ref _sendMacro, value);
+    }
 
     public string TxMode
     {

@@ -33,56 +33,51 @@ public partial class MainWindow : Window
     /// </summary>
     private void TxTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
+        if (e.Key != Key.Enter) return;
+        if (sender is not TextBox tb || tb.DataContext is not PortTabViewModel portVm) return;
+
+        // Check whether the current modifier matches the port's chosen send macro
+        bool isSendMacro = portVm.SendMacro switch
         {
-            if (DataContext is MainViewModel mainVm && mainVm.EnterToSend)
+            "Ctrl+Enter"  => (Keyboard.Modifiers & ModifierKeys.Control) != 0,
+            "Alt+Enter"   => (Keyboard.Modifiers & ModifierKeys.Alt)     != 0,
+            "Shift+Enter" => (Keyboard.Modifiers & ModifierKeys.Shift)   != 0,
+            _             => false
+        };
+
+        if (isSendMacro)
+        {
+            // Send macro pressed — transmit the TX content
+            if (portVm.SendCommand.CanExecute(null))
             {
-                if (sender is TextBox tb && tb.DataContext is PortTabViewModel portVm)
-                {
-                    if (portVm.SendCommand.CanExecute(null))
-                    {
-                        portVm.SendCommand.Execute(null);
-                        e.Handled = true;
-                    }
-                }
+                portVm.SendCommand.Execute(null);
+            }
+        }
+        else
+        {
+            // Plain Enter (no macro modifier): insert CR then LF on next Enter
+            string current = portVm.TxInput;
+            if (portVm.SendAsHex)
+            {
+                // HEX mode: insert 0D (CR byte), then 0A (LF byte) if last byte was 0D
+                string rawHex = new string(
+                    current.Where(c => "0123456789ABCDEFabcdef".Contains(c)).ToArray())
+                    .ToUpperInvariant();
+                bool lastWasCR = rawHex.Length >= 2 && rawHex.Substring(rawHex.Length - 2) == "0D";
+                portVm.TxInput = lastWasCR ? current + "0A" : current + "0D";
             }
             else
             {
-                if (sender is TextBox tb && tb.DataContext is PortTabViewModel portVm)
-                {
-                    string current = portVm.TxInput;
-
-                    if (portVm.SendAsHex)
-                    {
-                        // HEX mode: insert 0D (CR byte), then 0A (LF byte) if last byte was 0D.
-                        // Strip spaces and check the last two hex chars.
-                        string rawHex = new string(
-                            current.Where(c => "0123456789ABCDEFabcdef".Contains(c)).ToArray())
-                            .ToUpperInvariant();
-                        bool lastWasCR = rawHex.Length >= 2 && rawHex.Substring(rawHex.Length - 2) == "0D";
-
-                        // Appending without a leading space is fine — the TxInput setter
-                        // strips spaces and re-formats the whole string automatically.
-                        portVm.TxInput = lastWasCR ? current + "0A" : current + "0D";
-                    }
-                    else
-                    {
-                        // ASCII mode: insert \r, then \n if the last char is already \r.
-                        if (current.Length > 0 && current[current.Length - 1] == '\r')
-                        {
-                            portVm.TxInput = current + "\n";
-                        }
-                        else
-                        {
-                            portVm.TxInput = current + "\r";
-                        }
-                    }
-
-                    tb.CaretIndex = portVm.TxInput.Length;
-                    e.Handled = true;
-                }
+                // ASCII mode: insert \r, then \n if the last char is already \r
+                if (current.Length > 0 && current[current.Length - 1] == '\r')
+                    portVm.TxInput = current + "\n";
+                else
+                    portVm.TxInput = current + "\r";
             }
+            tb.CaretIndex = portVm.TxInput.Length;
         }
+
+        e.Handled = true;
     }
 
     /// <summary>
