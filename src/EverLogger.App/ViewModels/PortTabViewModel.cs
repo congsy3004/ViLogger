@@ -94,6 +94,7 @@ public class PortTabViewModel : ViewModelBase
         ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
         ToggleTimestampCommand = new RelayCommand(() => ShowTimestamp = !ShowTimestamp);
+        ToggleAutoScrollCommand = new RelayCommand(() => AutoScroll = !AutoScroll);
         RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
 
         // Tx command
@@ -316,6 +317,7 @@ public class PortTabViewModel : ViewModelBase
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
     public ICommand ToggleTimestampCommand { get; }
+    public ICommand ToggleAutoScrollCommand { get; }
     public ICommand SendCommand { get; }
     public ICommand RemoveThisPortCommand { get; }
 

@@ -405,16 +405,15 @@
 
                                         <!-- Timestamp toggle: green=ON, red=OFF -->
                                         <Button Command="{Binding ToggleTimestampCommand}"
-                                                Width="65" Height="24" FontSize="11">
+                                                Width="80" Height="24" FontSize="11">
                                             <Button.Style>
                                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="Content" Value="TS OFF"/>
+                                                    <Setter Property="Content" Value="Timestamp"/>
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding ShowTimestamp}" Value="True">
-                                                            <Setter Property="Content" Value="TS ON"/>
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>
@@ -424,10 +423,25 @@
                                             </Button.Style>
                                         </Button>
 
-                                        <CheckBox Content="Auto↓" 
-                                                  IsChecked="{Binding AutoScroll}" 
-                                                  VerticalAlignment="Center" 
-                                                  FontSize="10" Margin="6,0,2,0"/>
+                                        <!-- AutoScroll toggle: green=ON, red=OFF -->
+                                        <Button Command="{Binding ToggleAutoScrollCommand}"
+                                                Width="80" Height="24" FontSize="11" Margin="4,0,0,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Setter Property="Content" Value="AutoScroll"/>
+                                                    <Setter Property="Background" Value="#381E22"/>
+                                                    <Setter Property="Foreground" Value="#F87171"/>
+                                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding AutoScroll}" Value="True">
+                                                            <Setter Property="Background" Value="#143A2C"/>
+                                                            <Setter Property="Foreground" Value="#34D399"/>
+                                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
 
                                         <Button Content="Clear" 
                                                 Command="{Binding ClearCommand}" 
