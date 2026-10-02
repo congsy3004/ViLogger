@@ -368,16 +368,15 @@
 
                                         <!-- Log toggle: green=logging, red=not logging -->
                                         <Button Command="{Binding ToggleLogCommand}" 
-                                                Width="70" Height="24" FontSize="11">
+                                                Width="50" Height="24" FontSize="11">
                                             <Button.Style>
                                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="Content" Value="Log OFF"/>
+                                                    <Setter Property="Content" Value="Log"/>
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsLogging}" Value="True">
-                                                            <Setter Property="Content" Value="Log ON"/>
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>
@@ -386,20 +385,6 @@
                                                 </Style>
                                             </Button.Style>
                                         </Button>
-
-                                        <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
-
-                                        <TextBlock Text="View:" Foreground="{StaticResource MutedForegroundBrush}" 
-                                                   VerticalAlignment="Center" FontSize="10" Margin="2,0"/>
-                                        <ComboBox ItemsSource="{Binding LogFormatValues}" 
-                                                  SelectedItem="{Binding SelectedDisplayFormat}" 
-                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
-
-                                        <TextBlock Text="Log:" Foreground="{StaticResource MutedForegroundBrush}" 
-                                                   VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
-                                        <ComboBox ItemsSource="{Binding LogFormatValues}" 
-                                                  SelectedItem="{Binding SelectedLogFormat}" 
-                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
 
                                         <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
 
@@ -443,9 +428,25 @@
                                             </Button.Style>
                                         </Button>
 
+                                        <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
+
                                         <Button Content="Clear" 
                                                 Command="{Binding ClearCommand}" 
-                                                Width="55" Height="24" FontSize="11" Margin="4,0,0,0"/>
+                                                Width="55" Height="24" FontSize="11"/>
+
+                                        <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
+
+                                        <TextBlock Text="View:" Foreground="{StaticResource MutedForegroundBrush}" 
+                                                   VerticalAlignment="Center" FontSize="10" Margin="2,0"/>
+                                        <ComboBox ItemsSource="{Binding LogFormatValues}" 
+                                                  SelectedItem="{Binding SelectedDisplayFormat}" 
+                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
+
+                                        <TextBlock Text="Log:" Foreground="{StaticResource MutedForegroundBrush}" 
+                                                   VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
+                                        <ComboBox ItemsSource="{Binding LogFormatValues}" 
+                                                  SelectedItem="{Binding SelectedLogFormat}" 
+                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
                                     </WrapPanel>
                                 </Border>
 
