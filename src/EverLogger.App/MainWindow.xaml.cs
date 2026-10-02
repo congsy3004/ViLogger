@@ -29,25 +29,22 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles Enter key in Tx input to send if 'Enter to send' is enabled.
+    /// Handles Enter key in Tx input:
+    /// - Plain Enter: sends the TX content immediately (same as clicking the Send button).
+    /// - Ctrl+Enter: inserts CR (&lt;CR&gt; / 0D) into the input. If the last character was
+    ///   already CR, inserts LF instead (&lt;LF&gt; / 0A). LF is only appended immediately
+    ///   after CR (the smart rule).
     /// </summary>
     private void TxTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter) return;
         if (sender is not TextBox tb || tb.DataContext is not PortTabViewModel portVm) return;
 
-        // Check whether the current modifier matches the port's chosen send macro
-        bool isSendMacro = portVm.SendMacro switch
-        {
-            "Ctrl+Enter"  => (Keyboard.Modifiers & ModifierKeys.Control) != 0,
-            "Alt+Enter"   => (Keyboard.Modifiers & ModifierKeys.Alt)     != 0,
-            "Shift+Enter" => (Keyboard.Modifiers & ModifierKeys.Shift)   != 0,
-            _             => false
-        };
+        bool ctrlHeld = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
 
-        if (isSendMacro)
+        if (!ctrlHeld)
         {
-            // Send macro pressed — transmit the TX content
+            // Plain Enter → send
             if (portVm.SendCommand.CanExecute(null))
             {
                 portVm.SendCommand.Execute(null);
@@ -55,7 +52,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Plain Enter (no macro modifier): insert CR then LF on next Enter
+            // Ctrl+Enter → insert CR, then LF if last was CR (smart rule)
             string current = portVm.TxInput;
             if (portVm.SendAsHex)
             {

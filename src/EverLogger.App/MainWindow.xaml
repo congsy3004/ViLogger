@@ -464,12 +464,6 @@
                                                 Style="{StaticResource AccentButton}"
                                                 Width="32" Height="24" FontSize="13" Margin="4,0,0,0"/>
 
-                                        <!-- Send macro keyboard shortcut selector -->
-                                        <ComboBox DockPanel.Dock="Right" 
-                                                  ItemsSource="{Binding SendMacroOptions}"
-                                                  SelectedItem="{Binding SendMacro}"
-                                                  Width="90" Height="24" FontSize="10" Padding="3,1" Margin="3,0"/>
-
                                         <ComboBox DockPanel.Dock="Right" 
                                                   ItemsSource="{Binding LineEndingOptions}" 
                                                   SelectedItem="{Binding SelectedLineEnding}" 
