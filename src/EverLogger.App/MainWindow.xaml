@@ -366,12 +366,12 @@
 
                                         <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
 
-                                        <!-- Log toggle: green=logging, red=not logging -->
-                                        <Button Command="{Binding ToggleLogCommand}" 
-                                                Width="50" Height="24" FontSize="11">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="Content" Value="Log"/>
+                                        <!-- Log mode dropdown: Off=red, Ascii/Hex/Binary=green -->
+                                        <ComboBox ItemsSource="{Binding LogModeOptions}"
+                                                  SelectedItem="{Binding LogMode}"
+                                                  Width="75" Height="24" FontSize="10" Padding="3,1">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
@@ -383,8 +383,8 @@
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </Button.Style>
-                                        </Button>
+                                            </ComboBox.Style>
+                                        </ComboBox>
 
                                         <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
 
@@ -440,12 +440,6 @@
                                                    VerticalAlignment="Center" FontSize="10" Margin="2,0"/>
                                         <ComboBox ItemsSource="{Binding LogFormatValues}" 
                                                   SelectedItem="{Binding SelectedDisplayFormat}" 
-                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
-
-                                        <TextBlock Text="Log:" Foreground="{StaticResource MutedForegroundBrush}" 
-                                                   VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
-                                        <ComboBox ItemsSource="{Binding LogFormatValues}" 
-                                                  SelectedItem="{Binding SelectedLogFormat}" 
                                                   Width="62" Height="24" FontSize="10" Padding="3,1"/>
                                     </WrapPanel>
                                 </Border>

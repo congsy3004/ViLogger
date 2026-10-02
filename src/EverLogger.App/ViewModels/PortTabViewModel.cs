@@ -17,6 +17,7 @@ public class PortTabViewModel : ViewModelBase
     private bool _isConfigured;
     private bool _isConnected;
     private bool _isLogging;
+    private string _logMode = "Off";
     private bool _showTimestamp = true;
     private string _statusText = "Not configured";
     private long _bytesReceived;
@@ -261,6 +262,34 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _isLogging, value);
     }
 
+    public string[] LogModeOptions { get; } = ["Off", "Ascii", "Hex", "Binary"];
+
+    public string LogMode
+    {
+        get => _logMode;
+        set
+        {
+            if (_logMode == value) return;
+            _logMode = value;
+            OnPropertyChanged();
+
+            // Always stop the current writer first
+            DoStopLogging();
+
+            if (value != "Off")
+            {
+                // Map mode name to LogFormat enum for the file writer
+                SelectedLogFormat = value switch
+                {
+                    "Hex"    => LogFormat.Hex,
+                    "Binary" => LogFormat.Binary,
+                    _        => LogFormat.Ascii
+                };
+                DoStartLogging();
+            }
+        }
+    }
+
     public bool ShowTimestamp
     {
         get => _showTimestamp;
@@ -469,9 +498,31 @@ public class PortTabViewModel : ViewModelBase
 
     // ───────────────── Logging ─────────────────
 
+    /// <summary>
+    /// Starts logging at the given mode (Ascii/Hex/Binary). Sets LogMode and opens the file writer.
+    /// If LogMode is already a non-Off value, this is a no-op (already logging).
+    /// Called by LogAllOn in MainViewModel.
+    /// </summary>
     public void StartLogging()
     {
-        if (IsLogging || !IsConfigured) return;
+        if (_logMode != "Off") return; // already logging
+        LogMode = "Ascii"; // default format for global start-all
+    }
+
+    /// <summary>
+    /// Stops logging and resets LogMode to "Off". Called by error handler and LogAllOff.
+    /// </summary>
+    public void StopLogging()
+    {
+        LogMode = "Off";
+    }
+
+    /// <summary>
+    /// Actually opens the log file writer. Called only from the LogMode setter.
+    /// </summary>
+    private void DoStartLogging()
+    {
+        if (_isLogging || !IsConfigured) return;
 
         string logDir = _getLogDirectory();
         string templateStr = _getLogFileTemplate();
@@ -489,9 +540,12 @@ public class PortTabViewModel : ViewModelBase
         IsLogging = true;
     }
 
-    public void StopLogging()
+    /// <summary>
+    /// Stops and disposes the log file writer. Called only from the LogMode setter.
+    /// </summary>
+    private void DoStopLogging()
     {
-        if (!IsLogging) return;
+        if (!_isLogging) return;
 
         _logWriter?.Stop();
         _logWriter = null;
@@ -500,10 +554,7 @@ public class PortTabViewModel : ViewModelBase
 
     private void ToggleLog()
     {
-        if (IsLogging)
-            StopLogging();
-        else
-            StartLogging();
+        LogMode = _logMode == "Off" ? "Ascii" : "Off";
     }
 
     public void EnqueueLogData(DataPacket packet)
