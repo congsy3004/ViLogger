@@ -48,19 +48,36 @@ public partial class MainWindow : Window
             }
             else
             {
-                // Enter to send OFF: first Enter inserts CR (\r),
-                // pressing Enter again immediately after CR inserts LF (\n).
                 if (sender is TextBox tb && tb.DataContext is PortTabViewModel portVm)
                 {
                     string current = portVm.TxInput;
-                    if (current.Length > 0 && current[current.Length - 1] == '\r')
+
+                    if (portVm.SendAsHex)
                     {
-                        portVm.TxInput = current + "\n";
+                        // HEX mode: insert 0D (CR byte), then 0A (LF byte) if last byte was 0D.
+                        // Strip spaces and check the last two hex chars.
+                        string rawHex = new string(
+                            current.Where(c => "0123456789ABCDEFabcdef".Contains(c)).ToArray())
+                            .ToUpperInvariant();
+                        bool lastWasCR = rawHex.Length >= 2 && rawHex.Substring(rawHex.Length - 2) == "0D";
+
+                        // Appending without a leading space is fine — the TxInput setter
+                        // strips spaces and re-formats the whole string automatically.
+                        portVm.TxInput = lastWasCR ? current + "0A" : current + "0D";
                     }
                     else
                     {
-                        portVm.TxInput = current + "\r";
+                        // ASCII mode: insert \r, then \n if the last char is already \r.
+                        if (current.Length > 0 && current[current.Length - 1] == '\r')
+                        {
+                            portVm.TxInput = current + "\n";
+                        }
+                        else
+                        {
+                            portVm.TxInput = current + "\r";
+                        }
                     }
+
                     tb.CaretIndex = portVm.TxInput.Length;
                     e.Handled = true;
                 }
