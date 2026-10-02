@@ -52,6 +52,27 @@ public partial class MainWindow : Window
     /// <summary>
     /// Ensure all logs are flushed and serial connections closed when the application closes.
     /// </summary>
+    private HelpWindow? _helpWindow;
+
+    /// <summary>
+    /// Opens the help window (or brings it to front if already open).
+    /// </summary>
+    private void HelpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_helpWindow == null || !_helpWindow.IsLoaded)
+        {
+            _helpWindow = new HelpWindow { Owner = this };
+            _helpWindow.Show();
+        }
+        else
+        {
+            _helpWindow.Activate();
+        }
+    }
+
+    /// <summary>
+    /// Ensure all logs are flushed and serial connections closed when the application closes.
+    /// </summary>
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);

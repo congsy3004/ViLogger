@@ -59,12 +59,15 @@
 
                 <!-- Row 1: Global Actions & Layout -->
                 <DockPanel Grid.Row="0" Margin="0,0,0,5">
-                    <!-- Right: Port Management Buttons -->
+                    <!-- Right: Port Management + Help -->
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="?" 
+                                Click="HelpButton_Click"
+                                Width="28" Height="26"
+                                FontWeight="Bold"/>
                         <Button Content="+ Add Port" 
                                 Command="{Binding AddPortCommand}" 
-                                Width="90" Height="26"
-                                ToolTip="Add a new port panel (max 4). Layout auto-adjusts: 1=1×1, 2=side by side, 3=3 columns, 4=2×2."/>
+                                Width="90" Height="26"/>
                     </StackPanel>
 
                     <!-- Left: Batch Actions & Enter to send -->
@@ -73,15 +76,13 @@
                         <!-- 1. Connect All — play button, connects all configured ports -->
                         <Button Content="▶ Connect All"
                                 Command="{Binding ConnectAllCommand}"
-                                Width="105" Height="26"
-                                ToolTip="Connect all configured ports"/>
+                                Width="105" Height="26"/>
 
                         <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
 
                         <!-- 2a. Log Start All -->
                         <Button Command="{Binding LogAllOnCommand}"
-                                Width="80" Height="26"
-                                ToolTip="Start logging on all configured ports">
+                                Width="80" Height="26">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                     <Setter Property="Content" Value="▶ Log All"/>
@@ -95,8 +96,7 @@
                         <!-- 2b. Log Stop All -->
                         <Button Command="{Binding LogAllOffCommand}"
                                 Width="80" Height="26"
-                                Margin="4,0,0,0"
-                                ToolTip="Stop logging on all ports">
+                                Margin="4,0,0,0">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                     <Setter Property="Content" Value="■ Log All"/>
@@ -118,13 +118,11 @@
                                     <Setter Property="Background" Value="#381E22"/>
                                     <Setter Property="Foreground" Value="#F87171"/>
                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                    <Setter Property="ToolTip" Value="Enter to send: Disabled (Click to enable)"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding EnterToSend}" Value="True">
                                             <Setter Property="Background" Value="#143A2C"/>
                                             <Setter Property="Foreground" Value="#34D399"/>
                                             <Setter Property="BorderBrush" Value="#065F46"/>
-                                            <Setter Property="ToolTip" Value="Enter to send: Enabled (Click to disable)"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -143,23 +141,20 @@
                         <Button Content="..." 
                                 Command="{Binding BrowseLogDirectoryCommand}" 
                                 Width="28" Height="25" 
-                                Margin="2,0,0,0" Padding="0"
-                                ToolTip="Browse log directory"/>
+                                Margin="2,0,0,0" Padding="0"/>
                         
                         <!-- 3. Open Log Directory Button -->
                         <Button Content="📁 Open Dir" 
                                 Command="{Binding OpenLogDirectoryCommand}" 
                                 Height="25" Padding="8,0" 
-                                Margin="4,0,0,0"
-                                ToolTip="Open log folder in Windows File Explorer"/>
+                                Margin="4,0,0,0"/>
 
                         <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="12,0,6,0"/>
 
                         <TextBlock Text="File Template:" Style="{StaticResource HeaderLabel}"/>
                         <TextBox Text="{Binding LogFileNameTemplate}" 
                                  Width="180" Height="25" 
-                                 VerticalAlignment="Center"
-                                 ToolTip="Tokens: {port}, {datetime}, {date}, {time}"/>
+                                 VerticalAlignment="Center"/>
                     </StackPanel>
                 </DockPanel>
             </Grid>
@@ -261,42 +256,34 @@
 
                                         <!-- Form: Data Bits -->
                                         <DockPanel Margin="0,0,0,10">
-                                            <TextBlock Text="Data Bits" Style="{StaticResource FormLabel}"
-                                                       ToolTip="Number of data bits per byte. Most devices use 8."/>
+                                            <TextBlock Text="Data Bits" Style="{StaticResource FormLabel}"/>
                                             <ComboBox ItemsSource="{Binding DataBitsValues}"
                                                       SelectedItem="{Binding DataBits}"
-                                                      Height="28"
-                                                      ToolTip="Number of data bits per byte. Most devices use 8."/>
+                                                      Height="28"/>
                                         </DockPanel>
 
                                         <!-- Form: Parity -->
                                         <DockPanel Margin="0,0,0,10">
-                                            <TextBlock Text="Parity" Style="{StaticResource FormLabel}"
-                                                       ToolTip="Parity error-checking. None = no parity bit (most common). Even/Odd = simple error detection."/>
+                                            <TextBlock Text="Parity" Style="{StaticResource FormLabel}"/>
                                             <ComboBox ItemsSource="{Binding ParityValues}"
                                                       SelectedItem="{Binding SelectedParity}"
-                                                      Height="28"
-                                                      ToolTip="Parity error-checking. None = no parity bit (most common). Even/Odd = simple error detection."/>
+                                                      Height="28"/>
                                         </DockPanel>
 
                                         <!-- Form: Stop Bits -->
                                         <DockPanel Margin="0,0,0,10">
-                                            <TextBlock Text="Stop Bits" Style="{StaticResource FormLabel}"
-                                                       ToolTip="Number of stop bits that signal end of byte. Most devices use 1."/>
+                                            <TextBlock Text="Stop Bits" Style="{StaticResource FormLabel}"/>
                                             <ComboBox ItemsSource="{Binding StopBitsValues}"
                                                       SelectedItem="{Binding SelectedStopBits}"
-                                                      Height="28"
-                                                      ToolTip="Number of stop bits that signal end of byte. Most devices use 1."/>
+                                                      Height="28"/>
                                         </DockPanel>
 
                                         <!-- Form: Handshake (Flow Control) -->
                                         <DockPanel Margin="0,0,0,10">
-                                            <TextBlock Text="Handshake" Style="{StaticResource FormLabel}"
-                                                       ToolTip="Hardware/software flow control. None = no flow control. RTS/CTS = hardware handshake. XOnXOff = software handshake."/>
+                                            <TextBlock Text="Handshake" Style="{StaticResource FormLabel}"/>
                                             <ComboBox ItemsSource="{Binding HandshakeValues}"
                                                       SelectedItem="{Binding SelectedHandshake}"
-                                                      Height="28"
-                                                      ToolTip="Hardware/software flow control. None = no flow control. RTS/CTS = hardware handshake. XOnXOff = software handshake."/>
+                                                      Height="28"/>
                                         </DockPanel>
 
                                         <!-- Form: Memorable Name -->
@@ -305,8 +292,7 @@
                                             <TextBox Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}" 
                                                      Height="28"
                                                      VerticalContentAlignment="Center"
-                                                     Padding="8,0"
-                                                     ToolTip="Optional identifier (e.g. GPS Module, IMU, Debug UART)"/>
+                                                     Padding="8,0"/>
                                         </DockPanel>
 
                                         <!-- Apply Button -->
@@ -315,8 +301,7 @@
                                                 Style="{StaticResource AccentButton}"
                                                 Height="32" 
                                                 FontSize="12"
-                                                HorizontalAlignment="Stretch"
-                                                ToolTip="Apply the selected port settings. Once configured, the port can be connected for data monitoring and logging."/>
+                                                HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </Border>
                             </Border>
@@ -330,8 +315,7 @@
                                     VerticalAlignment="Top"
                                     Margin="0,4,4,0"
                                     Foreground="{StaticResource MutedForegroundBrush}"
-                                    Visibility="{Binding IsConfigured, Converter={StaticResource InvBoolToVis}}"
-                                    ToolTip="Close this port panel"/>
+                                    Visibility="{Binding IsConfigured, Converter={StaticResource InvBoolToVis}}"/>
 
                             <!-- ╔═════════════════════════════════════════╗ -->
                             <!-- ║  CONFIGURED STATE: Monitor + Controls  ║ -->
@@ -351,14 +335,12 @@
                                                 Command="{Binding RemoveThisPortCommand}" 
                                                 Style="{StaticResource ToolButton}"
                                                 Width="22" Height="22" 
-                                                ToolTip="Close and remove this port panel"
                                                 Foreground="{StaticResource MutedForegroundBrush}"/>
                                         <Button DockPanel.Dock="Right" 
                                                 Content="↺" 
                                                 Command="{Binding ResetConfigCommand}" 
                                                 Style="{StaticResource ToolButton}"
                                                 Width="22" Height="22" 
-                                                ToolTip="Reset configuration (disconnect first)"
                                                 Foreground="{StaticResource MutedForegroundBrush}"/>
 
                                         <!-- Left: Indicator dot + Display Label -->
@@ -392,14 +374,12 @@
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                                    <Setter Property="ToolTip" Value="Click to connect this port"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsConnected}" Value="True">
                                                             <Setter Property="Content" Value="Connected"/>
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>
-                                                            <Setter Property="ToolTip" Value="Click to disconnect this port"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -417,14 +397,12 @@
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                                    <Setter Property="ToolTip" Value="Click to start logging to file"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsLogging}" Value="True">
                                                             <Setter Property="Content" Value="Log ON"/>
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>
-                                                            <Setter Property="ToolTip" Value="Click to stop logging"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -434,20 +412,16 @@
                                         <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
 
                                         <TextBlock Text="View:" Foreground="{StaticResource MutedForegroundBrush}" 
-                                                   VerticalAlignment="Center" FontSize="10" Margin="2,0"
-                                                   ToolTip="Select how received bytes are displayed in the monitor"/>
+                                                   VerticalAlignment="Center" FontSize="10" Margin="2,0"/>
                                         <ComboBox ItemsSource="{Binding LogFormatValues}" 
                                                   SelectedItem="{Binding SelectedDisplayFormat}" 
-                                                  Width="62" Height="24" FontSize="10" Padding="3,1"
-                                                  ToolTip="Display format: ASCII = readable text, Hex = raw hex bytes, Binary = byte count only"/>
+                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
 
                                         <TextBlock Text="Log:" Foreground="{StaticResource MutedForegroundBrush}" 
-                                                   VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"
-                                                   ToolTip="Select the format used when writing to the log file"/>
+                                                   VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
                                         <ComboBox ItemsSource="{Binding LogFormatValues}" 
                                                   SelectedItem="{Binding SelectedLogFormat}" 
-                                                  Width="62" Height="24" FontSize="10" Padding="3,1"
-                                                  ToolTip="Log file format: ASCII = readable text, Hex = raw hex bytes, Binary = byte count only"/>
+                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
 
                                         <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
 
@@ -460,14 +434,12 @@
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                                    <Setter Property="ToolTip" Value="Timestamp OFF — click to prefix each received line with the current time [HH:mm:ss.fff]"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding ShowTimestamp}" Value="True">
                                                             <Setter Property="Content" Value="TS ON"/>
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>
-                                                            <Setter Property="ToolTip" Value="Timestamp ON — each line is prefixed with [HH:mm:ss.fff]. Click to disable."/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -477,13 +449,11 @@
                                         <CheckBox Content="Auto↓" 
                                                   IsChecked="{Binding AutoScroll}" 
                                                   VerticalAlignment="Center" 
-                                                  FontSize="10" Margin="6,0,2,0"
-                                                  ToolTip="Auto-scroll: when ON, the monitor automatically scrolls to the latest received line"/>
+                                                  FontSize="10" Margin="6,0,2,0"/>
 
                                         <Button Content="Clear" 
                                                 Command="{Binding ClearCommand}" 
-                                                Width="55" Height="24" FontSize="11" Margin="4,0,0,0"
-                                                ToolTip="Clear the monitor display. This does NOT affect the log file — logged data is preserved."/>
+                                                Width="55" Height="24" FontSize="11" Margin="4,0,0,0"/>
                                     </WrapPanel>
                                 </Border>
 
@@ -498,20 +468,17 @@
                                                 Content="Send" 
                                                 Command="{Binding SendCommand}" 
                                                 Style="{StaticResource AccentButton}"
-                                                Width="55" Height="24" FontSize="11" Margin="4,0,0,0"
-                                                ToolTip="Send the TX input to the serial port. The selected line ending is appended automatically."/>
+                                                Width="55" Height="24" FontSize="11" Margin="4,0,0,0"/>
                                         
                                         <ComboBox DockPanel.Dock="Right" 
                                                   ItemsSource="{Binding LineEndingOptions}" 
                                                   SelectedItem="{Binding SelectedLineEnding}" 
-                                                  Width="60" Height="24" FontSize="10" Padding="3,1" Margin="3,0"
-                                                  ToolTip="Line ending appended to each transmission: None, CR (\r), LF (\n), or CRLF (\r\n)"/>
+                                                  Width="60" Height="24" FontSize="10" Padding="3,1" Margin="3,0"/>
                                         
                                         <CheckBox DockPanel.Dock="Right" 
                                                   Content="Hex" 
                                                   IsChecked="{Binding SendAsHex}" 
-                                                  VerticalAlignment="Center" FontSize="10" Margin="4,0,4,0"
-                                                  ToolTip="Hex mode: interpret the TX input as space-separated hex bytes (e.g. 48 65 6C 6C 6F sends 'Hello')"/>
+                                                  VerticalAlignment="Center" FontSize="10" Margin="4,0,4,0"/>
 
                                         <Border DockPanel.Dock="Left" 
                                                 Background="#0C253B" 
@@ -530,8 +497,7 @@
                                                  Height="26" 
                                                  VerticalAlignment="Center"
                                                  VerticalContentAlignment="Center"
-                                                 Padding="6,0"
-                                                 ToolTip="Enter text or hex bytes (e.g. 48 65 6C 6C 6F)"/>
+                                                 Padding="6,0"/>
                                     </DockPanel>
                                 </Border>
 
