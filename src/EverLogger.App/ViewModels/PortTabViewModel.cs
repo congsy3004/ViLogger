@@ -319,7 +319,6 @@ public class PortTabViewModel : ViewModelBase
     public ICommand SendCommand { get; }
     public ICommand RemoveThisPortCommand { get; }
 
-    public string LogButtonText => IsLogging ? "Log OFF" : "Log ON";
 
     // ───────────────── Tx Properties ─────────────────
 
@@ -361,7 +360,7 @@ public class PortTabViewModel : ViewModelBase
     {
         if (_selectedPort == null) return;
 
-        Config = new SerialPortConfig
+        Config = _config with
         {
             PortName = _selectedPort.PortName,
             BaudRate = _selectedBaudRate,
@@ -402,7 +401,6 @@ public class PortTabViewModel : ViewModelBase
         _logWriter = new LogFileWriter(logDir, SelectedLogFormat, template, PortName);
         _logWriter.Start();
         IsLogging = true;
-        OnPropertyChanged(nameof(LogButtonText));
     }
 
     public void StopLogging()
@@ -412,7 +410,6 @@ public class PortTabViewModel : ViewModelBase
         _logWriter?.Stop();
         _logWriter = null;
         IsLogging = false;
-        OnPropertyChanged(nameof(LogButtonText));
     }
 
     private void ToggleLog()

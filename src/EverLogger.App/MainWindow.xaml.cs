@@ -46,6 +46,25 @@ public partial class MainWindow : Window
                     }
                 }
             }
+            else
+            {
+                // Enter to send OFF: first Enter inserts CR (\r),
+                // pressing Enter again immediately after CR inserts LF (\n).
+                if (sender is TextBox tb && tb.DataContext is PortTabViewModel portVm)
+                {
+                    string current = portVm.TxInput;
+                    if (current.Length > 0 && current[current.Length - 1] == '\r')
+                    {
+                        portVm.TxInput = current + "\n";
+                    }
+                    else
+                    {
+                        portVm.TxInput = current + "\r";
+                    }
+                    tb.CaretIndex = portVm.TxInput.Length;
+                    e.Handled = true;
+                }
+            }
         }
     }
 
