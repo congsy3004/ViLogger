@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Text;
 using System.Windows.Input;
@@ -17,17 +19,19 @@ public class PortTabViewModel : ViewModelBase
     private bool _isConfigured;
     private bool _isConnected;
     private bool _isLogging;
-    private bool _showTimestamp = true;
     private string _statusText = "Not configured";
     private long _bytesReceived;
     private long _bytesLogged;
     private LogFormat _selectedDisplayFormat = LogFormat.Ascii;
     private LogFormat _selectedLogFormat = LogFormat.Ascii;
     private bool _autoScroll = true;
+    private bool _autoReconnect;
     private readonly StringBuilder _lineBuffer = new();
+    private bool _hasPartialLine;
     private LogFileWriter? _logWriter;
-    private const int MaxMonitorLines = 5000;
-    private const int TrimBatchSize = 500;
+    private string? _lastLogFilePath;
+    private const int MaxMonitorLines = 2000;
+    private const int TrimToSize = 1500;
 
     // Port selection (unconfigured state)
     private PortInfo? _selectedPort;
@@ -75,7 +79,7 @@ public class PortTabViewModel : ViewModelBase
         AvailablePorts = availablePorts;
         CommonBaudRates = commonBaudRates;
 
-        MonitorLines = new ObservableCollection<string>();
+        MonitorLines = new BulkObservableCollection<string>();
 
         // Config commands
         ApplyConfigCommand = new RelayCommand(ApplyConfig, () => _selectedPort != null);
@@ -93,8 +97,9 @@ public class PortTabViewModel : ViewModelBase
             () => IsConfigured);
         ToggleLogCommand = new RelayCommand(ToggleLog, () => IsConfigured);
         ClearCommand = new RelayCommand(ClearMonitor);
-        ToggleTimestampCommand = new RelayCommand(() => ShowTimestamp = !ShowTimestamp);
+        OpenLogFileCommand = new RelayCommand(OpenLogFile, () => !IsLogging && !string.IsNullOrEmpty(_lastLogFilePath));
         ToggleAutoScrollCommand = new RelayCommand(() => AutoScroll = !AutoScroll);
+        ToggleAutoReconnectCommand = new RelayCommand(() => AutoReconnect = !AutoReconnect);
         RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
 
         // Tx command
@@ -258,13 +263,13 @@ public class PortTabViewModel : ViewModelBase
     public bool IsLogging
     {
         get => _isLogging;
-        set => SetProperty(ref _isLogging, value);
-    }
-
-    public bool ShowTimestamp
-    {
-        get => _showTimestamp;
-        set => SetProperty(ref _showTimestamp, value);
+        set
+        {
+            if (SetProperty(ref _isLogging, value))
+            {
+                ((RelayCommand)OpenLogFileCommand)?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public string StatusText
@@ -305,7 +310,19 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _autoScroll, value);
     }
 
-    public ObservableCollection<string> MonitorLines { get; }
+    public bool AutoReconnect
+    {
+        get => _autoReconnect;
+        set => SetProperty(ref _autoReconnect, value);
+    }
+
+    public BulkObservableCollection<string> MonitorLines { get; }
+
+    /// <summary>
+    /// Raised whenever a new line is added and AutoScroll is on.
+    /// The view subscribes to this to scroll the terminal to the last item.
+    /// </summary>
+    public event EventHandler? ScrollToEndRequested;
 
     // ───────────────── Commands ─────────────────
 
@@ -316,8 +333,9 @@ public class PortTabViewModel : ViewModelBase
     public ICommand ToggleConnectCommand { get; }
     public ICommand ToggleLogCommand { get; }
     public ICommand ClearCommand { get; }
-    public ICommand ToggleTimestampCommand { get; }
+    public ICommand OpenLogFileCommand { get; }
     public ICommand ToggleAutoScrollCommand { get; }
+    public ICommand ToggleAutoReconnectCommand { get; }
     public ICommand SendCommand { get; }
     public ICommand RemoveThisPortCommand { get; }
 
@@ -486,12 +504,21 @@ public class PortTabViewModel : ViewModelBase
         var template = new LogFileNameTemplate(templateStr, ext);
         _logWriter = new LogFileWriter(logDir, SelectedLogFormat, template, PortName);
         _logWriter.Start();
+        _lastLogFilePath = _logWriter.CurrentFilePath;
+        ((RelayCommand)OpenLogFileCommand).RaiseCanExecuteChanged();
         IsLogging = true;
     }
 
     public void StopLogging()
     {
         if (!IsLogging) return;
+
+        // Capture the path before nulling the writer so the button stays enabled
+        if (_logWriter?.CurrentFilePath != null)
+        {
+            _lastLogFilePath = _logWriter.CurrentFilePath;
+            ((RelayCommand)OpenLogFileCommand).RaiseCanExecuteChanged();
+        }
 
         _logWriter?.Stop();
         _logWriter = null;
@@ -509,6 +536,23 @@ public class PortTabViewModel : ViewModelBase
     public void EnqueueLogData(DataPacket packet)
     {
         _logWriter?.Queue.TryWrite(packet);
+    }
+
+    private void OpenLogFile()
+    {
+        if (IsLogging) return;
+        string? path = _lastLogFilePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+        }
+        catch { }
     }
 
     // ───────────────── Tx (Send) ─────────────────
@@ -609,8 +653,7 @@ public class PortTabViewModel : ViewModelBase
             char c = (char)data[i];
             if (c == '\n')
             {
-                AddLine(_lineBuffer.ToString());
-                _lineBuffer.Clear();
+                FinalizePartialLine();
             }
             else if (c == '\r')
             {
@@ -622,26 +665,100 @@ public class PortTabViewModel : ViewModelBase
             }
         }
 
-        if (_lineBuffer.Length > 4096)
+        // Immediately push any buffered content to the display as a partial line.
+        // This ensures prompts without CR/LF (e.g. "COM1>") appear at once.
+        if (_lineBuffer.Length > 0)
         {
-            AddLine(_lineBuffer.ToString());
-            _lineBuffer.Clear();
+            FlushPartialLine();
         }
     }
 
+    /// <summary>
+    /// Called when LF is received. Completes the current line in the terminal.
+    /// If a partial line is already on screen, it is updated in-place to its
+    /// final content; otherwise a brand-new complete line is added.
+    /// </summary>
+    private void FinalizePartialLine()
+    {
+        string content = _lineBuffer.ToString();
+        _lineBuffer.Clear();
+
+        if (_hasPartialLine && MonitorLines.Count > 0)
+        {
+            // Update the already-visible partial line to its completed form
+            MonitorLines[MonitorLines.Count - 1] = content;
+            _hasPartialLine = false;
+        }
+        else
+        {
+            // No partial line on screen — add as a fresh complete line
+            AddLine(content);
+            return; // AddLine fires scroll internally
+        }
+
+        if (_autoScroll)
+        {
+            ScrollToEndRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Pushes the current buffer content to the terminal as a partial (incomplete) line.
+    /// On the first call for a new line, a new row is added; subsequent calls for the
+    /// same line update that row in-place so the display updates live.
+    /// </summary>
+    private void FlushPartialLine()
+    {
+        if (!_hasPartialLine)
+        {
+            TrimIfNeeded();
+            MonitorLines.Add(_lineBuffer.ToString());
+            _hasPartialLine = true;
+        }
+        else if (MonitorLines.Count > 0)
+        {
+            // Update the existing partial row in-place
+            MonitorLines[MonitorLines.Count - 1] = _lineBuffer.ToString();
+        }
+
+        if (_autoScroll)
+        {
+            ScrollToEndRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Trims the oldest lines when the buffer is full.
+    /// Resets the partial-line tracking because indices have shifted.
+    /// </summary>
+    private void TrimIfNeeded()
+    {
+        if (MonitorLines.Count >= MaxMonitorLines)
+        {
+            MonitorLines.RemoveRange(0, MonitorLines.Count - TrimToSize);
+            _hasPartialLine = false;
+        }
+    }
+
+    /// <summary>
+    /// Adds a complete line (TX echo, Hex display) to the terminal.
+    /// Resets partial-line tracking so the next ASCII partial starts fresh.
+    /// </summary>
     private void AddLine(string line)
     {
-        string entry = _showTimestamp
-            ? $"[{DateTime.Now:HH:mm:ss.fff}] {line}"
-            : line;
-        MonitorLines.Add(entry);
+        // A complete external line ends any in-progress partial tracking.
+        // The partial row stays on screen as-is; subsequent ASCII bytes open a new row.
+        // _lineBuffer MUST also be cleared: if a partial line was being buffered (e.g.
+        // "COM2>" without LF), leaving it would silently prepend to the next Rx data.
+        _hasPartialLine = false;
+        _lineBuffer.Clear();
 
-        if (MonitorLines.Count > MaxMonitorLines + TrimBatchSize)
+        TrimIfNeeded();
+        MonitorLines.Add(line);
+
+        if (_autoScroll)
         {
-            for (int i = 0; i < TrimBatchSize; i++)
-            {
-                MonitorLines.RemoveAt(0);
-            }
+            ScrollToEndRequested?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -649,6 +766,7 @@ public class PortTabViewModel : ViewModelBase
     {
         MonitorLines.Clear();
         _lineBuffer.Clear();
+        _hasPartialLine = false;
         BytesReceived = 0;
         BytesLogged = 0;
         BytesSent = 0;
@@ -664,5 +782,30 @@ public class PortTabViewModel : ViewModelBase
         {
             _disconnectAction(this);
         }
+    }
+}
+
+/// <summary>
+/// An <see cref="ObservableCollection{T}"/> that adds a <see cref="RemoveRange"/> method.
+/// Batch removals fire a single <see cref="NotifyCollectionChangedAction.Reset"/> notification
+/// instead of one notification per item, which keeps the UI responsive when trimming the buffer.
+/// </summary>
+public class BulkObservableCollection<T> : ObservableCollection<T>
+{
+    /// <summary>
+    /// Removes <paramref name="count"/> items starting at <paramref name="index"/>,
+    /// then fires a single Reset notification.
+    /// </summary>
+    public void RemoveRange(int index, int count)
+    {
+        if (count <= 0) return;
+
+        for (int i = 0; i < count; i++)
+        {
+            Items.RemoveAt(index);
+        }
+
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Count"));
     }
 }

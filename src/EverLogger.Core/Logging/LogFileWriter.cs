@@ -104,7 +104,7 @@ public class LogFileWriter
     {
         try
         {
-            using var fileStream = new FileStream(CurrentFilePath!, FileMode.Append, FileAccess.Write, FileShare.Read);
+            using var fileStream = new FileStream(CurrentFilePath!, FileMode.Append, FileAccess.Write, FileShare.None);
             using var bufferedStream = new BufferedStream(fileStream, 65536);
 
             long bytesSinceLastFlush = 0;
@@ -175,13 +175,8 @@ public class LogFileWriter
             return;
         }
 
-        string prefix = $"[{packet.TimestampUtc:yyyy-MM-dd HH:mm:ss.fff}] ";
-        byte[] prefixBytes = Encoding.UTF8.GetBytes(prefix);
-
         if (_format == LogFormat.Ascii)
         {
-            stream.Write(prefixBytes, 0, prefixBytes.Length);
-            
             for (int i = 0; i < packet.Data.Length; i++)
             {
                 byte b = packet.Data[i];
@@ -194,14 +189,11 @@ public class LogFileWriter
                     stream.WriteByte(b);
                 }
             }
-            stream.WriteByte((byte)'\n');
         }
         else if (_format == LogFormat.Hex)
         {
             for (int i = 0; i < packet.Data.Length; i += 16)
             {
-                stream.Write(prefixBytes, 0, prefixBytes.Length);
-                
                 int chunkLength = Math.Min(16, packet.Data.Length - i);
                 for (int j = 0; j < chunkLength; j++)
                 {

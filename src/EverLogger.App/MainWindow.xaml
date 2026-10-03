@@ -106,6 +106,37 @@
                                 </Style>
                             </Button.Style>
                         </Button>
+
+                        <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
+
+                        <!-- 3. Clear All -->
+                        <Button Content="Clear All"
+                                Command="{Binding ClearAllCommand}"
+                                Width="75" Height="26"
+                                ToolTip="Clears the terminal monitor display for all ports"/>
+
+                        <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
+
+                        <!-- 4. Auto Reconnect All toggle -->
+                        <Button Command="{Binding ToggleAutoReconnectAllCommand}"
+                                Width="120" Height="26"
+                                ToolTip="Toggles auto re-connect for all configured ports">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Setter Property="Content" Value="Auto Reconnect"/>
+                                    <Setter Property="Background" Value="#381E22"/>
+                                    <Setter Property="Foreground" Value="#F87171"/>
+                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding AutoReconnectAll}" Value="True">
+                                            <Setter Property="Background" Value="#143A2C"/>
+                                            <Setter Property="Foreground" Value="#34D399"/>
+                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                 </DockPanel>
 
@@ -364,19 +395,18 @@
                                             </Button.Style>
                                         </Button>
 
-                                        <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
-
-                                        <!-- Log toggle: green=logging, red=not logging -->
-                                        <Button Command="{Binding ToggleLogCommand}" 
-                                                Width="50" Height="24" FontSize="11">
+                                        <!-- Auto Reconnect toggle: green=ON, red=OFF -->
+                                        <Button Command="{Binding ToggleAutoReconnectCommand}"
+                                                Width="105" Height="24" FontSize="11" Margin="4,0,0,0"
+                                                ToolTip="Auto re-connect when disconnected unexpectedly">
                                             <Button.Style>
                                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="Content" Value="Log"/>
+                                                    <Setter Property="Content" Value="Auto Reconnect"/>
                                                     <Setter Property="Background" Value="#381E22"/>
                                                     <Setter Property="Foreground" Value="#F87171"/>
                                                     <Setter Property="BorderBrush" Value="#7F1D1D"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsLogging}" Value="True">
+                                                        <DataTrigger Binding="{Binding AutoReconnect}" Value="True">
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>
@@ -387,30 +417,10 @@
                                         </Button>
 
                                         <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
-
-                                        <!-- Timestamp toggle: green=ON, red=OFF -->
-                                        <Button Command="{Binding ToggleTimestampCommand}"
-                                                Width="80" Height="24" FontSize="11">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="Content" Value="Timestamp"/>
-                                                    <Setter Property="Background" Value="#381E22"/>
-                                                    <Setter Property="Foreground" Value="#F87171"/>
-                                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding ShowTimestamp}" Value="True">
-                                                            <Setter Property="Background" Value="#143A2C"/>
-                                                            <Setter Property="Foreground" Value="#34D399"/>
-                                                            <Setter Property="BorderBrush" Value="#065F46"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
 
                                         <!-- AutoScroll toggle: green=ON, red=OFF -->
                                         <Button Command="{Binding ToggleAutoScrollCommand}"
-                                                Width="80" Height="24" FontSize="11" Margin="4,0,0,0">
+                                                Width="80" Height="24" FontSize="11">
                                             <Button.Style>
                                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                                     <Setter Property="Content" Value="AutoScroll"/>
@@ -446,7 +456,50 @@
                                                    VerticalAlignment="Center" FontSize="10" Margin="4,0,2,0"/>
                                         <ComboBox ItemsSource="{Binding LogFormatValues}" 
                                                   SelectedItem="{Binding SelectedLogFormat}" 
-                                                  Width="62" Height="24" FontSize="10" Padding="3,1"/>
+                                                  Width="62" Height="24" FontSize="10" Padding="3,1">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLogging}" Value="True">
+                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+
+                                        <Border Width="1" Height="14" Background="{StaticResource BorderBrush}" Margin="6,0"/>
+
+                                        <!-- Log toggle: green=logging, red=not logging -->
+                                        <Button Command="{Binding ToggleLogCommand}" 
+                                                Width="50" Height="24" FontSize="11">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Setter Property="Content" Value="Log"/>
+                                                    <Setter Property="Background" Value="#381E22"/>
+                                                    <Setter Property="Foreground" Value="#F87171"/>
+                                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLogging}" Value="True">
+                                                            <Setter Property="Background" Value="#143A2C"/>
+                                                            <Setter Property="Foreground" Value="#34D399"/>
+                                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+
+                                        <!-- Open latest log file (folder-open icon, Segoe MDL2 Assets U+E838) -->
+                                        <Button Command="{Binding OpenLogFileCommand}"
+                                                Width="32" Height="24" Padding="0" Margin="2,0,0,0"
+                                                ToolTip="Open latest log file">
+                                            <TextBlock Text="&#xE838;" 
+                                                       FontFamily="Segoe MDL2 Assets" 
+                                                       FontSize="14" 
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"/>
+                                        </Button>
                                     </WrapPanel>
                                 </Border>
 
@@ -535,20 +588,23 @@
                                 </Border>
 
                                 <!-- ─── 5. High-Performance Monospace Terminal Monitor ─── -->
-                                <ListBox ItemsSource="{Binding MonitorLines}" 
+                                <ListBox x:Name="MonitorListBox"
+                                         ItemsSource="{Binding MonitorLines}" 
                                          Background="{StaticResource TerminalBackgroundBrush}" 
                                          Foreground="#CDD9E5"
                                          FontFamily="Consolas, Cascadia Code, Courier New" 
                                          FontSize="11"
                                          VirtualizingStackPanel.IsVirtualizing="True"
                                          VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                         HorizontalContentAlignment="Stretch"
                                          BorderThickness="0"
                                          Padding="4,2"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                         ScrollViewer.ScrollChanged="MonitorListBox_ScrollChanged">
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Loaded="MonitorListBox_Loaded"
+                                         Unloaded="MonitorListBox_Unloaded">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding}" LineHeight="15"/>
+                                            <TextBlock Text="{Binding}" LineHeight="15" TextWrapping="Wrap"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>

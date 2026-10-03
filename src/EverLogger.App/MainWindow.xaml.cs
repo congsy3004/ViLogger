@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using EverLogger.App.ViewModels;
 
 namespace EverLogger.App;
@@ -14,18 +15,66 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Auto-scroll handler checks the per-port AutoScroll setting.
+    /// Subscribes to the per-port ScrollToEndRequested event when the terminal ListBox is loaded.
     /// </summary>
-    private void MonitorListBox_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    private void MonitorListBox_Loaded(object sender, RoutedEventArgs e)
     {
-        if (e.ExtentHeightChange > 0 && sender is ListBox listBox && listBox.Items.Count > 0)
+        if (sender is not ListBox listBox) return;
+        if (listBox.DataContext is not PortTabViewModel portVm) return;
+
+        // Cache the inner ScrollViewer so we can call ScrollToBottom() directly.
+        // ScrollToBottom() is unconditional and works regardless of item render state,
+        // unlike ScrollIntoView() which silently fails when variable-height items
+        // (from TextWrapping=Wrap) haven't been measured yet.
+        ScrollViewer? scrollViewer = null;
+        listBox.Loaded += (_, __) => scrollViewer = GetScrollViewer(listBox);
+        scrollViewer = GetScrollViewer(listBox);
+
+        portVm.ScrollToEndRequested -= OnScrollToEndRequested;
+        portVm.ScrollToEndRequested += OnScrollToEndRequested;
+
+        void OnScrollToEndRequested(object? _, EventArgs __)
         {
-            // Get the per-port AutoScroll from the ListBox's DataContext (PortTabViewModel)
-            if (listBox.DataContext is PortTabViewModel portVm && portVm.AutoScroll)
-            {
-                listBox.ScrollIntoView(listBox.Items[listBox.Items.Count - 1]);
-            }
+            // Defer to Background priority so new items are measured before we scroll.
+            listBox.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Background,
+                () =>
+                {
+                    // Re-acquire if template was just applied
+                    scrollViewer ??= GetScrollViewer(listBox);
+                    scrollViewer?.ScrollToBottom();
+                });
         }
+
+        // Store the unsubscribe action so Unloaded can detach it
+        listBox.Tag = (Action)(() => portVm.ScrollToEndRequested -= OnScrollToEndRequested);
+    }
+
+    /// <summary>
+    /// Unsubscribes from the per-port ScrollToEndRequested event when the terminal ListBox is unloaded.
+    /// </summary>
+    private void MonitorListBox_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ListBox listBox && listBox.Tag is Action unsubscribe)
+        {
+            unsubscribe();
+            listBox.Tag = null;
+        }
+    }
+
+    /// <summary>
+    /// Walks the visual tree to find the first <see cref="ScrollViewer"/> child of a ListBox.
+    /// </summary>
+    private static ScrollViewer? GetScrollViewer(DependencyObject obj)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+        {
+            var child = VisualTreeHelper.GetChild(obj, i);
+            if (child is ScrollViewer sv) return sv;
+            var found = GetScrollViewer(child);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     /// <summary>

@@ -20,11 +20,13 @@ public class MainViewModel : ViewModelBase
     private readonly DispatcherTimer _uiTimer;
     private readonly ConcurrentQueue<DataPacket> _dataQueue;
     private readonly ConcurrentDictionary<string, PortTabViewModel> _activePorts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _reconnectCts = new(StringComparer.OrdinalIgnoreCase);
 
     private string _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
     private string _logFileNameTemplate = "{port}_{datetime}";
     private bool _isAllConnected;
     private bool _isAllLogging;
+    private bool _autoReconnectAll;
     private string _statusBarText = "Ready";
     // No _selectedLayout field; layout is computed automatically from Ports.Count
 
@@ -47,6 +49,8 @@ public class MainViewModel : ViewModelBase
         LogAllOffCommand = new RelayCommand(LogAllOff, () => Ports.Any(p => p.IsLogging));
         ToggleConnectAllCommand = new RelayCommand(ToggleConnectAll, () => Ports.Any(p => p.IsConfigured));
         ToggleLogAllCommand = new RelayCommand(ToggleLogAll, () => Ports.Any(p => p.IsConfigured));
+        ClearAllCommand = new RelayCommand(ClearAll);
+        ToggleAutoReconnectAllCommand = new RelayCommand(() => AutoReconnectAll = !AutoReconnectAll);
         OpenLogDirectoryCommand = new RelayCommand(OpenLogDirectory);
         
         BrowseLogDirectoryCommand = new RelayCommand(() =>
@@ -113,6 +117,21 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _isAllLogging, value);
     }
 
+    public bool AutoReconnectAll
+    {
+        get => _autoReconnectAll;
+        set
+        {
+            if (SetProperty(ref _autoReconnectAll, value))
+            {
+                foreach (var port in Ports)
+                {
+                    port.AutoReconnect = value;
+                }
+            }
+        }
+    }
+
     public string StatusBarText
     {
         get => _statusBarText;
@@ -128,6 +147,8 @@ public class MainViewModel : ViewModelBase
     public ICommand LogAllOffCommand { get; }
     public ICommand ToggleConnectAllCommand { get; }
     public ICommand ToggleLogAllCommand { get; }
+    public ICommand ClearAllCommand { get; }
+    public ICommand ToggleAutoReconnectAllCommand { get; }
     public ICommand OpenLogDirectoryCommand { get; }
     public ICommand BrowseLogDirectoryCommand { get; }
 
@@ -156,6 +177,7 @@ public class MainViewModel : ViewModelBase
     private void RemovePort(PortTabViewModel tab)
     {
         if (Ports.Count <= 1) return;
+        CancelAutoReconnect(tab.PortName);
         tab.Cleanup();
         if (!string.IsNullOrEmpty(tab.PortName))
         {
@@ -205,6 +227,22 @@ public class MainViewModel : ViewModelBase
             {
                 UpdateGlobalStates();
             }
+            else if (e.PropertyName == nameof(PortTabViewModel.AutoReconnect))
+            {
+                if (!tab.AutoReconnect)
+                {
+                    CancelAutoReconnect(tab.PortName);
+                    if (!tab.IsConnected && (tab.StatusText == "Reconnecting..." || tab.StatusText == "Waiting for port..."))
+                    {
+                        tab.StatusText = "Disconnected";
+                    }
+                }
+                else if (tab.IsConfigured && !tab.IsConnected && tab.StatusText.StartsWith("Error"))
+                {
+                    StartAutoReconnect(tab);
+                }
+                UpdateGlobalStates();
+            }
         };
 
         return tab;
@@ -244,6 +282,12 @@ public class MainViewModel : ViewModelBase
             _portManager.AddPort(tab.Config);
             _activePorts[tab.PortName] = tab;
             _portManager.OpenPort(tab.PortName);
+            if (_portManager.Connections.TryGetValue(tab.PortName, out var conn) && conn.IsOpen)
+            {
+                tab.IsConnected = true;
+                tab.StatusText = "Connected";
+                CancelAutoReconnect(tab.PortName);
+            }
             StatusBarText = $"{tab.PortName} connected";
         }
         catch (Exception ex)
@@ -255,10 +299,13 @@ public class MainViewModel : ViewModelBase
 
     private void DisconnectPort(PortTabViewModel tab)
     {
+        CancelAutoReconnect(tab.PortName);
         try
         {
             _portManager.ClosePort(tab.PortName);
             _portManager.RemovePort(tab.PortName);
+            tab.IsConnected = false;
+            tab.StatusText = "Disconnected";
             StatusBarText = $"{tab.PortName} disconnected";
         }
         catch (Exception ex)
@@ -291,14 +338,24 @@ public class MainViewModel : ViewModelBase
 
     private void DisconnectAll()
     {
-        _portManager.CloseAll();
         foreach (var tab in Ports)
         {
+            CancelAutoReconnect(tab.PortName);
             tab.IsConnected = false;
             tab.StatusText = tab.IsConfigured ? "Disconnected" : "Not configured";
         }
+        _portManager.CloseAll();
         IsAllConnected = false;
         StatusBarText = "All ports disconnected";
+    }
+
+    private void ClearAll()
+    {
+        foreach (var tab in Ports)
+        {
+            tab.ClearMonitor();
+        }
+        StatusBarText = "All port monitors cleared";
     }
 
     private void LogAllOn()
@@ -399,23 +456,137 @@ public class MainViewModel : ViewModelBase
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            if (_activePorts.TryGetValue(portName, out var tab))
+            PortTabViewModel? tab = Ports.FirstOrDefault(p => string.Equals(p.PortName, portName, StringComparison.OrdinalIgnoreCase));
+            if (tab == null)
+            {
+                _activePorts.TryGetValue(portName, out tab);
+            }
+
+            if (tab != null)
             {
                 tab.IsConnected = false;
-                tab.StatusText = $"Error: {ex.Message}";
                 if (tab.IsLogging) tab.StopLogging();
             }
-            StatusBarText = $"Port {portName} disconnected unexpectedly. Click Connect to retry.";
 
-            // Clean up the stale connection so the user can reconnect by clicking the button.
-            // ClosePort/RemovePort are wrapped in try/catch because the port may already
-            // be in an unusable state (the very reason ErrorOccurred fired).
+            // Clean up the stale connection so the user or auto-reconnect can reconnect cleanly.
             try { _portManager.ClosePort(portName); } catch { }
             try { _portManager.RemovePort(portName); } catch { }
             _activePorts.TryRemove(portName, out _);
 
             UpdateGlobalStates();
+
+            // If auto-reconnect is already retrying for this port, don't spawn duplicate tasks
+            if (_reconnectCts.ContainsKey(portName))
+            {
+                if (tab != null) tab.StatusText = "Reconnecting...";
+                return;
+            }
+
+            if (tab != null && tab.AutoReconnect)
+            {
+                StartAutoReconnect(tab);
+            }
+            else
+            {
+                if (tab != null) tab.StatusText = $"Error: {ex.Message}";
+                StatusBarText = $"Port {portName} disconnected unexpectedly. Click Connect to retry.";
+            }
         });
+    }
+
+    private void StartAutoReconnect(PortTabViewModel tab)
+    {
+        string portName = tab.PortName;
+        if (string.IsNullOrEmpty(portName)) return;
+
+        CancelAutoReconnect(portName);
+
+        var cts = new CancellationTokenSource();
+        _reconnectCts[portName] = cts;
+        var token = cts.Token;
+
+        tab.StatusText = "Reconnecting...";
+        StatusBarText = $"Port {portName} disconnected. Auto re-connecting...";
+
+        Task.Run(async () =>
+        {
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(1500, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
+                if (token.IsCancellationRequested) break;
+
+                bool shouldContinue = false;
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    shouldContinue = tab.IsConfigured && tab.AutoReconnect && !tab.IsConnected;
+                });
+
+                if (!shouldContinue)
+                {
+                    break;
+                }
+
+                bool portExists = false;
+                try
+                {
+                    var available = SerialPortManager.GetAvailablePorts();
+                    portExists = available.Any(p => string.Equals(p, portName, StringComparison.OrdinalIgnoreCase));
+                }
+                catch { }
+
+                if (!portExists)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (!token.IsCancellationRequested)
+                        {
+                            tab.StatusText = "Waiting for port...";
+                            StatusBarText = $"Waiting for {portName} to become available...";
+                        }
+                    });
+                    continue;
+                }
+
+                bool connected = false;
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (token.IsCancellationRequested || tab.IsConnected || !tab.IsConfigured) return;
+
+                    tab.StatusText = "Connecting...";
+                    ConnectPort(tab);
+                    connected = tab.IsConnected;
+                });
+
+                if (connected)
+                {
+                    _reconnectCts.TryRemove(portName, out _);
+                    break;
+                }
+            }
+        }, token);
+    }
+
+    private void CancelAutoReconnect(string portName)
+    {
+        if (string.IsNullOrEmpty(portName)) return;
+
+        if (_reconnectCts.TryRemove(portName, out var cts))
+        {
+            try
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
+            catch { }
+        }
     }
 
     private void UpdateGlobalStates()
@@ -423,6 +594,8 @@ public class MainViewModel : ViewModelBase
         var configured = Ports.Where(p => p.IsConfigured).ToList();
         IsAllConnected = configured.Any() && configured.All(p => p.IsConnected);
         IsAllLogging = configured.Any(p => p.IsLogging);
+        _autoReconnectAll = configured.Any() && configured.All(p => p.AutoReconnect);
+        OnPropertyChanged(nameof(AutoReconnectAll));
 
         ((RelayCommand)ToggleConnectAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)ToggleLogAllCommand).RaiseCanExecuteChanged();
@@ -451,6 +624,12 @@ public class MainViewModel : ViewModelBase
     public void Shutdown()
     {
         _uiTimer.Stop();
+        foreach (var cts in _reconnectCts.Values)
+        {
+            try { cts.Cancel(); cts.Dispose(); } catch { }
+        }
+        _reconnectCts.Clear();
+
         foreach (var tab in Ports)
         {
             tab.Cleanup();
