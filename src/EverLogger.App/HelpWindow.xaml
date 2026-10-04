@@ -84,6 +84,8 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="+ Add Port"/>
@@ -93,7 +95,7 @@
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="▶ Connect All"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Connect all port panels that have been configured (Apply Configuration clicked) but are not yet connected. Panels already connected are not affected."/>
+                               Text="Connect all port panels that have been configured (Apply Configuration clicked) but are not yet connected. Panels already connected are not affected. This button only connects — disconnect each port with its own Connected button."/>
                     <Border Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="▶ Log All  /  ■ Log All"/>
@@ -101,13 +103,18 @@
                                Text="▶ Log All (green) starts file logging on all configured ports simultaneously. ■ Log All (red) stops logging on all ports. Log files are saved in the configured Log Directory using the File Template naming scheme."/>
                     <Border Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="Enter to send"/>
+                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="Clear All"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Toggles Enter key behaviour in all TX input boxes.&#10;• ON (green): pressing Enter immediately sends the current TX content.&#10;• OFF (red): pressing Enter inserts a CR character (\r). Pressing Enter again immediately after CR inserts LF (\n). LF is only added when the previous character is CR."/>
+                               Text="Clears the terminal monitor and resets the RX / TX / LOG counters of every port. Log files on disk are not affected."/>
                     <Border Grid.Row="7" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="? (this window)"/>
+                    <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="Auto Reconnect"/>
                     <TextBlock Grid.Row="8" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Turns Auto Reconnect on or off for all ports at once. Green = every configured port has Auto Reconnect ON. Red = at least one port has it OFF. See the per-port Auto Reconnect button for details."/>
+                    <Border Grid.Row="9" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="? (this window)"/>
+                    <TextBlock Grid.Row="10" Grid.Column="1" Style="{StaticResource BtnDesc}"
                                Text="Opens this help window."/>
                 </Grid>
 
@@ -120,6 +127,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -141,6 +149,11 @@
                     <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="📁 Open Dir"/>
                     <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource BtnDesc}"
                                Text="Opens the log directory in Windows File Explorer so you can browse the saved log files."/>
+                    <Border Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="File Template"/>
+                    <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Naming pattern for new log files. Tokens: {port} = COM port name, {date} = yyyy-MM-dd, {time} = HH-mm-ss, {datetime} = yyyy-MM-dd_HH-mm-ss, {timestamp} = yyyyMMddHHmmss. Date/time values are in UTC. Extension is added automatically: .log for ASCII/Hex, .bin for Binary. Default: {port}_{datetime}."/>
                 </Grid>
 
                 <!-- ══════════════ PORT CONFIGURATION CARD ══════════════ -->
@@ -262,41 +275,71 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="Connected / Disconnected"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Toggles the connection state of this port. Green = connected and receiving data. Red = disconnected. If the device is physically unplugged while connected, the button automatically turns red and resets — click it again to reconnect once the device is plugged back in."/>
+                               Text="Toggles the connection state of this port. Green = connected and receiving data. Red = disconnected. If the device is unplugged while connected, the button turns red automatically. With Auto Reconnect ON the port reconnects by itself when the device returns; otherwise click this button again."/>
                     <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log ON / Log OFF"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="Auto Reconnect"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Toggles file logging for this port. Green (ON) = actively writing received data to a log file in the configured Log Directory. Red (OFF) = logging stopped. The log file stays open between sessions until the app closes."/>
+                               Text="Green (ON) = if the port drops unexpectedly, ViLogger retries every 1.5 s until the device is back. The status bar shows 'Waiting for port...' while the COM port is missing and 'Reconnecting...' / 'Connecting...' during an attempt. Red (OFF) = no automatic retry. Clicking Disconnect cancels any pending retry. Note: logging is not resumed after a reconnect — press Log again."/>
                     <Border Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="View: (combobox)"/>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="AutoScroll"/>
                     <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Controls how received bytes are displayed in the monitor. ASCII = human-readable text. Hex = raw hex bytes (e.g. 48 65 6C). Binary = show byte count only. Can be changed while connected without interrupting data."/>
+                               Text="Green (ON) = the terminal follows the latest received line. Red (OFF) = the view stays where it is so you can scroll back and read."/>
                     <Border Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log: (combobox)"/>
+                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="Clear"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Controls the format written to the log file. Independent of the display format. ASCII writes readable text. Hex writes hex-encoded bytes. Binary writes raw bytes."/>
+                               Text="Clears this port's monitor display and resets its RX / TX / LOG counters. This does NOT affect the log file — all data already written to disk is preserved."/>
                     <Border Grid.Row="7" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="TS ON / TS OFF"/>
+                    <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="View: (combobox)"/>
                     <TextBlock Grid.Row="8" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Toggles per-line timestamps in the monitor. Green (ON) = each line is prefixed with [HH:mm:ss.fff]. Red (OFF) = lines are shown without timestamp. Default is ON. Does not affect the log file format."/>
+                               Text="Controls how received bytes are displayed in the monitor. ASCII = readable text; non-printable bytes are shown as '.', and text without a line ending (e.g. a 'COM1&gt;' prompt) appears immediately. Hex = raw hex bytes (e.g. 48 65 6C), one line per received chunk. Binary = byte count only. Can be changed while connected. The monitor keeps the latest 2,000 lines."/>
                     <Border Grid.Row="9" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="Auto↓ (checkbox)"/>
+                    <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log: (combobox)"/>
                     <TextBlock Grid.Row="10" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Auto-scroll: when checked, the terminal monitor automatically scrolls to the latest received line. Uncheck to freeze the view and scroll manually."/>
+                               Text="Controls the format written to the log file, independent of the display format. ASCII writes received text (control bytes other than CR, LF and Tab become '.'). Hex writes 16 hex bytes per line. Binary writes raw bytes to a .bin file. Locked while logging is active."/>
                     <Border Grid.Row="11" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource BtnName}" Text="Clear"/>
+                    <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log"/>
                     <TextBlock Grid.Row="12" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Clears the monitor display immediately. This does NOT affect the log file — all data already written to disk is preserved."/>
+                               Text="Toggles file logging for this port. Green = writing received data to a new file in the Log Directory, named by the File Template. Red = logging stopped. Logging stops automatically if the port disconnects unexpectedly. Transmitted (TX) data is not written to the log."/>
+                    <Border Grid.Row="13" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="14" Grid.Column="0" Style="{StaticResource BtnName}" Text="Open log file (folder icon)"/>
+                    <TextBlock Grid.Row="14" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Opens this port's most recent log file in its default application. Disabled while logging is active (the file is locked) and until a log file has been created."/>
+                </Grid>
+
+                <!-- ══════════════ PORT STATUS BAR ══════════════ -->
+                <TextBlock Style="{StaticResource SectionHeader}" Text="Port Status Bar"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="Status text"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Current state of the port: Connected, Disconnected, Waiting for port..., Reconnecting..., or an error message. Green when connected, red otherwise."/>
+                    <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="RX / TX / LOG"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Byte counters since the last Clear. RX = bytes received. TX = bytes sent. LOG = bytes received while logging was active."/>
                 </Grid>
 
                 <!-- ══════════════ TX TRANSMIT BAR ══════════════ -->
@@ -315,27 +358,26 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="TX input box"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Type the text or hex bytes to transmit. In hex mode, enter space-separated bytes (e.g. 48 65 6C 6C 6F to send 'Hello'). Enter key behaviour is controlled by the global Enter to send toggle."/>
+                               Text="Type the text or hex bytes to transmit.&#10;• Enter: sends immediately.&#10;• Ctrl+Enter: inserts &lt;CR&gt; (HEX: 0D). Pressing it again right after &lt;CR&gt; inserts &lt;LF&gt; (HEX: 0A).&#10;In ASCII mode, line breaks are shown as &lt;CR&gt; / &lt;LF&gt; tokens — pasted line breaks are converted automatically and sent as real CR / LF bytes."/>
                     <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="Hex (checkbox)"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="ASCII / HEX (combobox)"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="When checked, the TX input is interpreted as space-separated hexadecimal bytes. Example: '0D 0A' sends CRLF. When unchecked, input is sent as plain ASCII text."/>
+                               Text="ASCII = input is sent as plain text. HEX = input is interpreted as hexadecimal bytes; non-hex characters are ignored and digits are grouped into pairs automatically (AB4D3D → AB 4D 3D). Example: '0D 0A' sends CRLF. Switching mode converts the current input."/>
                     <Border Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="Line ending (combobox)"/>
                     <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Bytes appended automatically after the TX content on every send: None = no extra bytes. CR = \r (0x0D). LF = \n (0x0A). CRLF = \r\n (0x0D 0x0A). Most terminals and MCU parsers expect CRLF or LF."/>
+                               Text="Bytes appended automatically after the TX content on every send (ASCII mode only — in HEX mode exactly the typed bytes are sent): None = no extra bytes. CR = \r (0x0D). LF = \n (0x0A). CRLF = \r\n (0x0D 0x0A). Most terminals and MCU parsers expect CRLF or LF."/>
                     <Border Grid.Row="5" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
-                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="Send"/>
+                    <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="➤ Send"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Sends the TX input content to the serial port immediately. The selected line ending is appended automatically. Sent data is echoed in the monitor as 'TX>> ...' for confirmation. Only available when connected."/>
+                               Text="Sends the TX input content to the serial port immediately (same as pressing Enter). Sent data is echoed in the monitor as 'TX&gt;&gt; ...' for confirmation. Only available when connected and the input is not empty."/>
                 </Grid>
 
                 <Border Height="20"/>
