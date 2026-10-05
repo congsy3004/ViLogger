@@ -114,29 +114,6 @@
                                 Command="{Binding ClearAllCommand}"
                                 Width="75" Height="26"
                                 ToolTip="Clears the terminal monitor display for all ports"/>
-
-                        <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="8,0"/>
-
-                        <!-- 4. Auto Reconnect All toggle -->
-                        <Button Command="{Binding ToggleAutoReconnectAllCommand}"
-                                Width="120" Height="26"
-                                ToolTip="Toggles auto re-connect for all configured ports">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                    <Setter Property="Content" Value="Auto Reconnect"/>
-                                    <Setter Property="Background" Value="#381E22"/>
-                                    <Setter Property="Foreground" Value="#F87171"/>
-                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding AutoReconnectAll}" Value="True">
-                                            <Setter Property="Background" Value="#143A2C"/>
-                                            <Setter Property="Foreground" Value="#34D399"/>
-                                            <Setter Property="BorderBrush" Value="#065F46"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
                     </StackPanel>
                 </DockPanel>
 
@@ -363,6 +340,17 @@
                                                        FontSize="12"
                                                        Foreground="{StaticResource PrimaryForegroundBrush}" 
                                                        VerticalAlignment="Center"/>
+
+                                            <!-- Hardware Removed badge -->
+                                            <Border Background="#381E22" BorderBrush="#7F1D1D" BorderThickness="1" 
+                                                    CornerRadius="3" Padding="6,1" Margin="8,0,0,0"
+                                                    Visibility="{Binding IsHardwareRemoved, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="⚠ HARDWARE REMOVED" 
+                                                           Foreground="#F87171" 
+                                                           FontSize="10" 
+                                                           FontWeight="Bold"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>
@@ -386,27 +374,6 @@
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsConnected}" Value="True">
                                                             <Setter Property="Content" Value="Connected"/>
-                                                            <Setter Property="Background" Value="#143A2C"/>
-                                                            <Setter Property="Foreground" Value="#34D399"/>
-                                                            <Setter Property="BorderBrush" Value="#065F46"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
-
-                                        <!-- Auto Reconnect toggle: green=ON, red=OFF -->
-                                        <Button Command="{Binding ToggleAutoReconnectCommand}"
-                                                Width="105" Height="24" FontSize="11" Margin="4,0,0,0"
-                                                ToolTip="Auto re-connect when disconnected unexpectedly">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="Content" Value="Auto Reconnect"/>
-                                                    <Setter Property="Background" Value="#381E22"/>
-                                                    <Setter Property="Foreground" Value="#F87171"/>
-                                                    <Setter Property="BorderBrush" Value="#7F1D1D"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding AutoReconnect}" Value="True">
                                                             <Setter Property="Background" Value="#143A2C"/>
                                                             <Setter Property="Foreground" Value="#34D399"/>
                                                             <Setter Property="BorderBrush" Value="#065F46"/>

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Text;
+using System.Windows;
 using System.Windows.Input;
 using EverLogger.App.Helpers;
 using EverLogger.Core.Data;
@@ -18,6 +19,7 @@ public class PortTabViewModel : ViewModelBase
     private SerialPortConfig _config;
     private bool _isConfigured;
     private bool _isConnected;
+    private bool _isHardwareRemoved;
     private bool _isLogging;
     private string _statusText = "Not configured";
     private long _bytesReceived;
@@ -25,7 +27,6 @@ public class PortTabViewModel : ViewModelBase
     private LogFormat _selectedDisplayFormat = LogFormat.Ascii;
     private LogFormat _selectedLogFormat = LogFormat.Ascii;
     private bool _autoScroll = true;
-    private bool _autoReconnect;
     private readonly StringBuilder _lineBuffer = new();
     private bool _hasPartialLine;
     private LogFileWriter? _logWriter;
@@ -99,7 +100,6 @@ public class PortTabViewModel : ViewModelBase
         ClearCommand = new RelayCommand(ClearMonitor);
         OpenLogFileCommand = new RelayCommand(OpenLogFile, () => !IsLogging && !string.IsNullOrEmpty(_lastLogFilePath));
         ToggleAutoScrollCommand = new RelayCommand(() => AutoScroll = !AutoScroll);
-        ToggleAutoReconnectCommand = new RelayCommand(() => AutoReconnect = !AutoReconnect);
         RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
 
         // Tx command
@@ -272,6 +272,12 @@ public class PortTabViewModel : ViewModelBase
         }
     }
 
+    public bool IsHardwareRemoved
+    {
+        get => _isHardwareRemoved;
+        set => SetProperty(ref _isHardwareRemoved, value);
+    }
+
     public string StatusText
     {
         get => _statusText;
@@ -310,12 +316,6 @@ public class PortTabViewModel : ViewModelBase
         set => SetProperty(ref _autoScroll, value);
     }
 
-    public bool AutoReconnect
-    {
-        get => _autoReconnect;
-        set => SetProperty(ref _autoReconnect, value);
-    }
-
     public BulkObservableCollection<string> MonitorLines { get; }
 
     /// <summary>
@@ -335,7 +335,6 @@ public class PortTabViewModel : ViewModelBase
     public ICommand ClearCommand { get; }
     public ICommand OpenLogFileCommand { get; }
     public ICommand ToggleAutoScrollCommand { get; }
-    public ICommand ToggleAutoReconnectCommand { get; }
     public ICommand SendCommand { get; }
     public ICommand RemoveThisPortCommand { get; }
 
@@ -472,6 +471,7 @@ public class PortTabViewModel : ViewModelBase
         };
 
         IsConfigured = true;
+        IsHardwareRemoved = false;
         StatusText = "Disconnected";
         OnPropertyChanged(nameof(DisplayLabel));
         OnPropertyChanged(nameof(PortName));
@@ -481,6 +481,7 @@ public class PortTabViewModel : ViewModelBase
     {
         StopLogging();
         IsConfigured = false;
+        IsHardwareRemoved = false;
         StatusText = "Not configured";
         OnPropertyChanged(nameof(DisplayLabel));
     }
@@ -762,6 +763,21 @@ public class PortTabViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Adds a system/diagnostic message to the terminal monitor (e.g. disconnect/reconnect notice).
+    /// Safe to call from any thread; does not affect log files.
+    /// </summary>
+    public void AddSystemMessage(string message)
+    {
+        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.BeginInvoke(() => AddSystemMessage(message));
+            return;
+        }
+
+        AddLine(message);
+    }
+
     public void ClearMonitor()
     {
         MonitorLines.Clear();
@@ -778,6 +794,7 @@ public class PortTabViewModel : ViewModelBase
     public void Cleanup()
     {
         StopLogging();
+        IsHardwareRemoved = false;
         if (IsConnected)
         {
             _disconnectAction(this);

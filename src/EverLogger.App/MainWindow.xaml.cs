@@ -1,6 +1,8 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using EverLogger.App.ViewModels;
 
@@ -8,10 +10,31 @@ namespace EverLogger.App;
 
 public partial class MainWindow : Window
 {
+    private const int WM_DEVICECHANGE = 0x0219;
+
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainViewModel();
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        var source = PresentationSource.FromVisual(this) as HwndSource;
+        source?.AddHook(WndProc);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_DEVICECHANGE)
+        {
+            if (DataContext is MainViewModel mainVm)
+            {
+                mainVm.OnDeviceChanged();
+            }
+        }
+        return IntPtr.Zero;
     }
 
     /// <summary>
