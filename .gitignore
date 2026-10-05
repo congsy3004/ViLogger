@@ -2,9 +2,12 @@
 bin/
 obj/
 publish/
+dist/
 
 # IDE
 .vs/
+.vscode/
+.idea/
 *.user
 *.suo
 

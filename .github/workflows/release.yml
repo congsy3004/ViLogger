@@ -1,0 +1,63 @@
+name: Release
+
+# Push a tag like v1.1.0 to build ViLogger.exe and publish it as a GitHub Release.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish single-file exe
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          dotnet publish src/EverLogger.App/EverLogger.App.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:Version=$version `
+            -o publish
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item publish/ViLogger.exe dist/ViLogger.exe
+          $zipDir = "dist/ViLogger-$tag-win-x64"
+          New-Item -ItemType Directory -Force $zipDir | Out-Null
+          Copy-Item publish/ViLogger.exe, LICENSE, THIRD-PARTY-NOTICES.md, README.md $zipDir
+          Compress-Archive -Path "$zipDir/*" -DestinationPath "dist/ViLogger-$tag-win-x64.zip"
+
+      - name: Extract release notes for this tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $lines = Get-Content RELEASE_NOTES.md
+          $start = ($lines | Select-String -Pattern "^## $([regex]::Escape($tag))\b" | Select-Object -First 1).LineNumber
+          if (-not $start) {
+            "See [RELEASE_NOTES.md](RELEASE_NOTES.md)." | Set-Content notes.md
+            exit 0
+          }
+          $rest = $lines[$start..($lines.Count - 1)]
+          $end = ($rest | Select-String -Pattern '^## v' | Select-Object -First 1).LineNumber
+          if ($end) { $rest = $rest[0..($end - 2)] }
+          $rest | Set-Content notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ViLogger ${{ github.ref_name }}
+          body_path: notes.md
+          files: |
+            dist/ViLogger.exe
+            dist/ViLogger-${{ github.ref_name }}-win-x64.zip

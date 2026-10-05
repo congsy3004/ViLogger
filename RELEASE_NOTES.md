@@ -7,19 +7,17 @@
 
 ## v1.1.0 — 2026-10-03
 
-**Auto-reconnect, full UART settings, a reworked TX bar and a new "Nightfall" theme.**
+**First public release on GitHub — hardware-removed indicator, full UART settings, a reworked TX bar and a new "Nightfall" theme.**
 
 ---
 
 ### ✨ New
 
-#### Auto Reconnect
-- New per-port **Auto Reconnect** toggle (green = ON, red = OFF).
-- New global **Auto Reconnect** toggle in the main toolbar — turns it on/off for every port. It shows green only when all configured ports have it enabled.
-- When a port drops unexpectedly (e.g. USB cable unplugged), ViLogger retries every **1.5 s** until the device returns:
-  - `Waiting for port...` — the COM port is not present on the system.
-  - `Reconnecting...` / `Connecting...` — the port is back and a connection attempt is in progress.
-- Turning Auto Reconnect off, or clicking Disconnect, cancels any pending retry.
+#### Hardware Removed Indicator
+- When a device is unplugged (e.g. USB-to-serial cable removed), the port header shows a red **⚠ HARDWARE REMOVED** badge and the status bar explains what happened.
+- A notice is printed in the monitor (never written to the log file).
+- The COM port list refreshes automatically when devices are plugged in or removed.
+- Plug the device back in and press **Connect** to continue.
 
 #### Full UART Configuration
 - The port configuration card now includes **Data Bits** (5–8), **Parity**, **Stop Bits** and **Handshake** (flow control), in addition to COM port, baud rate and name.
@@ -51,7 +49,7 @@
 - **Global toolbar:**
   - **▶ Connect All** now only connects configured ports (it is no longer a connect/disconnect toggle).
   - **Log All** is split into two buttons: **▶ Log All** (start) and **■ Log All** (stop).
-- **Per-port toolbar** order: `Connected/Disconnected` | `Auto Reconnect` | `AutoScroll` | `Clear` | `View` | `Log format` | `Log` | `Open log file`.
+- **Per-port toolbar** order: `Connected/Disconnected` | `AutoScroll` | `Clear` | `View` | `Log format` | `Log` | `Open log file`.
 - **AutoScroll** is now a green/red toggle button.
 - The **Log format** dropdown is locked while logging is active.
 - **Terminal buffer** reduced from 5,000 to **2,000 lines**. When full, the oldest lines are trimmed in one batch down to 1,500 for a smoother UI.
@@ -59,6 +57,8 @@
 - Logging on a port **stops automatically** if that port disconnects unexpectedly.
 - New **"Nightfall" theme** — deep blue-charcoal with a sky-blue accent and 6 px rounded controls.
 - Window title is now **"ViLogger — Serial Monitor & Logger"**.
+- The executable is now named **`ViLogger.exe`** and is a true **single file** (native WPF libraries are embedded and compressed — ~70 MB instead of 147 MB + 5 DLLs).
+- Released under the **MIT License**.
 
 ---
 
@@ -93,7 +93,7 @@
 | **UI timer** | `DispatcherTimer` at 33 ms (30 fps), draining up to 5,000 packets per tick |
 | **Terminal** | Virtualized `ListBox`, 2,000-line cap with single-notification bulk trim |
 | **Log writer** | Background thread, `ConcurrentQueue`, 64 KB `BufferedStream`, flush every 500 ms or 64 KB, exclusive file lock |
-| **Auto-reconnect** | Background task per port, 1.5 s retry interval, cancellable |
+| **Device detection** | `WM_DEVICECHANGE` hook — port list refreshed only when the set of COM ports actually changes |
 | **Write timeout** | 500 ms per TX write — prevents UI hangs on blocked ports |
 
 ---
@@ -102,16 +102,19 @@
 
 | File | Description |
 |------|-------------|
-| `EverLogger.exe` | Self-contained portable executable for Windows 10/11 x64 |
+| `ViLogger.exe` | Self-contained portable executable for Windows 10/11 x64 |
+| `ViLogger-v1.1.0-win-x64.zip` | Same executable plus LICENSE, README and third-party notices |
 
 No installer. No .NET runtime required on the target machine. Just copy and run.
+
+> The executable is not code-signed, so Windows SmartScreen may show "Windows protected your PC". Click **More info → Run anyway**.
 
 ---
 
 ### 🐛 Known Limitations
 
 - Maximum **4 ports** simultaneously.
-- Logging is **not resumed** automatically after an auto-reconnect — press Log again.
+- After a device is unplugged, reconnecting is manual — press **Connect** (and **Log**) again.
 - Transmitted (TX) data is shown in the monitor but **not written to the log file**.
 - ASCII view shows non-printable and non-ASCII bytes as `.` (no UTF-8 decoding).
 - In Hex view, line breaks follow how the driver delivers data chunks, not a fixed width.

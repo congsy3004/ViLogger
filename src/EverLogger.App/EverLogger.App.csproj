@@ -6,8 +6,24 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <RootNamespace>EverLogger.App</RootNamespace>
-    <AssemblyName>EverLogger</AssemblyName>
+    <AssemblyName>ViLogger</AssemblyName>
     <ApplicationIcon Condition="Exists('Resources\app.ico')">Resources\app.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Version>1.1.0</Version>
+    <Product>ViLogger</Product>
+    <AssemblyTitle>ViLogger - Serial Monitor &amp; Logger</AssemblyTitle>
+    <Description>Portable multi-port serial monitor and data logger for Windows.</Description>
+    <Authors>congsy3004</Authors>
+    <Company>congsy3004</Company>
+    <Copyright>Copyright (c) 2026 congsy3004</Copyright>
+    <RepositoryUrl>https://github.com/congsy3004/VinaLogger_UART</RepositoryUrl>
+  </PropertyGroup>
+  <!-- Single-file publish: bundle WPF native DLLs into the exe so it runs on its own -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\EverLogger.Core\EverLogger.Core.csproj" />
