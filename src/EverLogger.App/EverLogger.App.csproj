@@ -10,7 +10,7 @@
     <ApplicationIcon Condition="Exists('Resources\app.ico')">Resources\app.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Product>ViLogger</Product>
     <AssemblyTitle>ViLogger - Serial Monitor &amp; Logger</AssemblyTitle>
     <Description>Portable multi-port serial monitor and data logger for Windows.</Description>

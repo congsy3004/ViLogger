@@ -5,6 +5,25 @@
 
 ---
 
+## v1.1.1 — 2026-10-05
+
+**New application icon.**
+
+---
+
+### ✨ New
+
+- ViLogger now has its own icon — a serial pulse with a **V** in the middle — shown on the taskbar, the window title bar, Alt+Tab and on `ViLogger.exe` in Explorer (previously the generic Windows placeholder).
+
+### 📦 Download
+
+| File | Description |
+|------|-------------|
+| `ViLogger.exe` | Self-contained portable executable for Windows 10/11 x64 |
+| `ViLogger-v1.1.1-win-x64.zip` | Same executable plus LICENSE, README and third-party notices |
+
+---
+
 ## v1.1.0 — 2026-10-03
 
 **First public release on GitHub — hardware-removed indicator, full UART settings, a reworked TX bar and a new "Nightfall" theme.**
@@ -206,4 +225,4 @@ No installer. No .NET runtime required on the target machine. Just copy and run.
 
 ---
 
-*Released by Cong Sy — 2026-10-03*
+*Released by Cong Sy — 2026-10-05*

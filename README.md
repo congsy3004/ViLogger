@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="ViLogger icon" width="96" align="right"/>
+
 # ViLogger
 
 [![Build](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml/badge.svg)](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml)
@@ -110,6 +112,9 @@ dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --
 |---|---|
 | `src/EverLogger.App` | WPF user interface (MVVM) |
 | `src/EverLogger.Core` | Serial port handling, data queues and log writers |
+| `src/EverLogger.App/Resources/app.ico` | Application icon |
+| `tools/make_icon.ps1` | Script that regenerates the icon (`pwsh tools/make_icon.ps1 -OutIco src/EverLogger.App/Resources/app.ico -PreviewPng docs/icon.png`) |
+| `docs/` | Images used by this README |
 
 ### Releasing
 
