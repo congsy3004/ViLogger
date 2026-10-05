@@ -17,7 +17,7 @@
     <Authors>congsy3004</Authors>
     <Company>congsy3004</Company>
     <Copyright>Copyright (c) 2026 congsy3004</Copyright>
-    <RepositoryUrl>https://github.com/congsy3004/VinaLogger_UART</RepositoryUrl>
+    <RepositoryUrl>https://github.com/congsy3004/ViLogger</RepositoryUrl>
   </PropertyGroup>
   <!-- Single-file publish: bundle WPF native DLLs into the exe so it runs on its own -->
   <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">

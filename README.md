@@ -1,7 +1,7 @@
 # ViLogger
 
-[![Build](https://github.com/congsy3004/VinaLogger_UART/actions/workflows/build.yml/badge.svg)](https://github.com/congsy3004/VinaLogger_UART/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/congsy3004/VinaLogger_UART)](https://github.com/congsy3004/VinaLogger_UART/releases/latest)
+[![Build](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml/badge.svg)](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/congsy3004/ViLogger)](https://github.com/congsy3004/ViLogger/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **ViLogger** is a fast, portable serial port (UART / COM) monitor and data logger for Windows.
@@ -23,7 +23,7 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 
 ## Download
 
-1. Go to the [**Releases**](https://github.com/congsy3004/VinaLogger_UART/releases/latest) page.
+1. Go to the [**Releases**](https://github.com/congsy3004/ViLogger/releases/latest) page.
 2. Download **`ViLogger.exe`** (or the `.zip`).
 3. Put it in a folder you can write to (e.g. `Documents\ViLogger`) and run it.
 
@@ -93,8 +93,8 @@ See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full change history.
 Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows.
 
 ```powershell
-git clone https://github.com/congsy3004/VinaLogger_UART.git
-cd VinaLogger_UART
+git clone https://github.com/congsy3004/ViLogger.git
+cd ViLogger
 
 # Build and run
 dotnet build EverLogger.sln -c Release
@@ -123,7 +123,7 @@ git push origin v1.1.0
 
 ## Contributing
 
-Bug reports and pull requests are welcome. Please open an [issue](https://github.com/congsy3004/VinaLogger_UART/issues)
+Bug reports and pull requests are welcome. Please open an [issue](https://github.com/congsy3004/ViLogger/issues)
 and include your Windows version, the USB-serial adapter you use and steps to reproduce.
 
 ## License
