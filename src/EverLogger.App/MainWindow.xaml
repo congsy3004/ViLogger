@@ -554,27 +554,37 @@
                                     </DockPanel>
                                 </Border>
 
-                                <!-- ─── 5. High-Performance Monospace Terminal Monitor ─── -->
-                                <ListBox x:Name="MonitorListBox"
-                                         ItemsSource="{Binding MonitorLines}" 
-                                         Background="{StaticResource TerminalBackgroundBrush}" 
+                                <!-- ─── 5. Terminal Monitor (quick view; the log file is the record) ─── -->
+                                <!-- Read-only TextBox fed from code-behind once per UI tick
+                                     (see MainWindow.MonitorTextBox_Loaded / TerminalBuffer). -->
+                                <TextBox x:Name="MonitorTextBox"
+                                         IsReadOnly="True"
+                                         IsUndoEnabled="False"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         Background="{StaticResource TerminalBackgroundBrush}"
                                          Foreground="#CDD9E5"
-                                         FontFamily="Consolas, Cascadia Code, Courier New" 
+                                         FontFamily="Consolas, Cascadia Code, Courier New"
                                          FontSize="11"
-                                         VirtualizingStackPanel.IsVirtualizing="True"
-                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                         HorizontalContentAlignment="Stretch"
                                          BorderThickness="0"
+                                         Margin="0"
                                          Padding="4,2"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                         Loaded="MonitorListBox_Loaded"
-                                         Unloaded="MonitorListBox_Unloaded">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" LineHeight="15" TextWrapping="Wrap"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                         VerticalContentAlignment="Top"
+                                         Loaded="MonitorTextBox_Loaded"
+                                         Unloaded="MonitorTextBox_Unloaded"
+                                         DataContextChanged="MonitorTextBox_DataContextChanged">
+                                    <TextBox.Template>
+                                        <ControlTemplate TargetType="{x:Type TextBox}">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ScrollViewer x:Name="PART_ContentHost"
+                                                              Focusable="False"
+                                                              HorizontalScrollBarVisibility="Disabled"
+                                                              VerticalScrollBarVisibility="Auto"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </TextBox.Template>
+                                </TextBox>
                             </DockPanel>
                         </Grid>
                     </Border>

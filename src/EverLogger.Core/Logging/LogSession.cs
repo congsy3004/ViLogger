@@ -84,9 +84,15 @@ public class LogSession : IDisposable
         if (!IsRunning) return;
 
         IsRunning = false;
-        foreach (var writer in _writers.Values)
+        foreach (var portName in _writers.Keys)
         {
-            writer.Stop();
+            if (_writers.TryGetValue(portName, out var writer))
+            {
+                writer.Stop();
+
+                // Writers are single-use; prepare a fresh one for the next StartAll().
+                _writers[portName] = new LogFileWriter(_outputDirectory, _format, _nameTemplate, portName);
+            }
         }
     }
 

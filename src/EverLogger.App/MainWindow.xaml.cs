@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using EverLogger.App.ViewModels;
 
 namespace EverLogger.App;
@@ -38,66 +39,99 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Subscribes to the per-port ScrollToEndRequested event when the terminal ListBox is loaded.
+    /// Connects a port's terminal TextBox to its view model when the TextBox is loaded.
     /// </summary>
-    private void MonitorListBox_Loaded(object sender, RoutedEventArgs e)
+    private void MonitorTextBox_Loaded(object sender, RoutedEventArgs e)
     {
-        if (sender is not ListBox listBox) return;
-        if (listBox.DataContext is not PortTabViewModel portVm) return;
-
-        // Cache the inner ScrollViewer so we can call ScrollToBottom() directly.
-        // ScrollToBottom() is unconditional and works regardless of item render state,
-        // unlike ScrollIntoView() which silently fails when variable-height items
-        // (from TextWrapping=Wrap) haven't been measured yet.
-        ScrollViewer? scrollViewer = null;
-        listBox.Loaded += (_, __) => scrollViewer = GetScrollViewer(listBox);
-        scrollViewer = GetScrollViewer(listBox);
-
-        portVm.ScrollToEndRequested -= OnScrollToEndRequested;
-        portVm.ScrollToEndRequested += OnScrollToEndRequested;
-
-        void OnScrollToEndRequested(object? _, EventArgs __)
+        if (sender is TextBox textBox)
         {
-            // Defer to Background priority so new items are measured before we scroll.
-            listBox.Dispatcher.BeginInvoke(
-                System.Windows.Threading.DispatcherPriority.Background,
-                () =>
+            AttachMonitor(textBox);
+        }
+    }
+
+    /// <summary>
+    /// Re-connects the terminal TextBox if it is ever reused for a different port.
+    /// </summary>
+    private void MonitorTextBox_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.IsLoaded)
+        {
+            AttachMonitor(textBox);
+        }
+    }
+
+    /// <summary>
+    /// Disconnects the terminal TextBox from its view model when it is unloaded.
+    /// </summary>
+    private void MonitorTextBox_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox textBox)
+        {
+            DetachMonitor(textBox);
+        }
+    }
+
+    private static void AttachMonitor(TextBox textBox)
+    {
+        // Never subscribe twice, and never stay subscribed to a previous port.
+        DetachMonitor(textBox);
+
+        if (textBox.DataContext is not PortTabViewModel portVm)
+        {
+            textBox.Clear();
+            return;
+        }
+
+        EventHandler onUpdate = (_, _) => ApplyTerminalUpdate(textBox, portVm);
+        portVm.DisplayUpdateReady += onUpdate;
+        textBox.Tag = (Action)(() => portVm.DisplayUpdateReady -= onUpdate);
+
+        // Always start from the full current text: the view may have been (re)created after
+        // data already arrived, and must never be left out of date.
+        portVm.Terminal.RequestReset();
+        ApplyTerminalUpdate(textBox, portVm);
+    }
+
+    private static void DetachMonitor(TextBox textBox)
+    {
+        if (textBox.Tag is Action detach)
+        {
+            detach();
+            textBox.Tag = null;
+        }
+    }
+
+    /// <summary>
+    /// Brings the terminal TextBox up to date with one append (or one full reload after the
+    /// buffer was trimmed or cleared), then follows the end if AutoScroll is on.
+    /// </summary>
+    private static void ApplyTerminalUpdate(TextBox textBox, PortTabViewModel portVm)
+    {
+        if (!portVm.Terminal.TryTakeUpdate(out bool reset, out string text)) return;
+
+        if (reset)
+        {
+            textBox.Text = text;
+        }
+        else
+        {
+            textBox.AppendText(text);
+        }
+
+        if (portVm.AutoScroll)
+        {
+            textBox.ScrollToEnd();
+
+            if (reset)
+            {
+                // After a full reload the text layout may finish after this call; scroll once
+                // more when the UI is idle so the view really ends at the bottom.
+                textBox.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
                 {
-                    // Re-acquire if template was just applied
-                    scrollViewer ??= GetScrollViewer(listBox);
-                    scrollViewer?.ScrollToBottom();
+                    if (portVm.AutoScroll) textBox.ScrollToEnd();
                 });
+            }
         }
-
-        // Store the unsubscribe action so Unloaded can detach it
-        listBox.Tag = (Action)(() => portVm.ScrollToEndRequested -= OnScrollToEndRequested);
-    }
-
-    /// <summary>
-    /// Unsubscribes from the per-port ScrollToEndRequested event when the terminal ListBox is unloaded.
-    /// </summary>
-    private void MonitorListBox_Unloaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is ListBox listBox && listBox.Tag is Action unsubscribe)
-        {
-            unsubscribe();
-            listBox.Tag = null;
-        }
-    }
-
-    /// <summary>
-    /// Walks the visual tree to find the first <see cref="ScrollViewer"/> child of a ListBox.
-    /// </summary>
-    private static ScrollViewer? GetScrollViewer(DependencyObject obj)
-    {
-        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
-        {
-            var child = VisualTreeHelper.GetChild(obj, i);
-            if (child is ScrollViewer sv) return sv;
-            var found = GetScrollViewer(child);
-            if (found != null) return found;
-        }
-        return null;
     }
 
     /// <summary>

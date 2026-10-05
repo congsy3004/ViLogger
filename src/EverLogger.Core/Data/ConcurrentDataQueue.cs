@@ -6,8 +6,13 @@ using System.Threading.Tasks;
 namespace EverLogger.Core.Data;
 
 /// <summary>
-/// A thread-safe bounded queue for DataPackets.
+/// A thread-safe, unbounded FIFO queue for DataPackets (many writers, one reader).
 /// </summary>
+/// <remarks>
+/// Unbounded on purpose: this queue feeds the log writer, and the log must never drop data.
+/// If the disk is temporarily slower than the serial port, packets wait here (in memory)
+/// instead of being discarded.
+/// </remarks>
 public class ConcurrentDataQueue
 {
     private readonly Channel<DataPacket> _channel;
@@ -20,26 +25,31 @@ public class ConcurrentDataQueue
     /// <summary>
     /// Initializes a new instance of the <see cref="ConcurrentDataQueue"/> class.
     /// </summary>
-    /// <param name="capacity">The maximum number of items the queue can hold. Default is 10000.</param>
-    public ConcurrentDataQueue(int capacity = 10000)
+    public ConcurrentDataQueue()
     {
-        var options = new BoundedChannelOptions(capacity)
+        _channel = Channel.CreateUnbounded<DataPacket>(new UnboundedChannelOptions
         {
-            FullMode = BoundedChannelFullMode.DropOldest,
             SingleWriter = false,
-            SingleReader = false
-        };
-        _channel = Channel.CreateBounded<DataPacket>(options);
+            SingleReader = true
+        });
     }
 
     /// <summary>
-    /// Writes a packet to the queue. Drops oldest if full (handled by Channel).
+    /// Writes a packet to the queue. Never drops data.
     /// </summary>
     /// <param name="packet">The packet to write.</param>
-    /// <returns>True if the packet was written successfully.</returns>
+    /// <returns>True if the packet was accepted; false only after <see cref="Complete"/>.</returns>
     public bool TryWrite(DataPacket packet)
     {
         return _channel.Writer.TryWrite(packet);
+    }
+
+    /// <summary>
+    /// Stops accepting new packets. Packets already accepted can still be read.
+    /// </summary>
+    public void Complete()
+    {
+        _channel.Writer.TryComplete();
     }
 
     /// <summary>

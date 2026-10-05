@@ -282,7 +282,7 @@
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="AutoScroll"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Green (ON) = the terminal follows the latest received line. Red (OFF) = the view stays where it is so you can scroll back and read."/>
+                               Text="Green (ON) = the terminal shows new data live and stays at the bottom. Red (OFF) = the terminal is paused so you can scroll back, select and copy text; data is still received and logged. Turning it back ON jumps to the latest data."/>
                     <Border Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="Clear"/>
@@ -292,17 +292,17 @@
 
                     <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="View: (combobox)"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Controls how received bytes are displayed in the monitor. ASCII = readable text; non-printable bytes are shown as '.', and text without a line ending (e.g. a 'COM1&gt;' prompt) appears immediately. Hex = raw hex bytes (e.g. 48 65 6C), one line per received chunk. Binary = byte count only. Can be changed while connected. The monitor keeps the latest 2,000 lines."/>
+                               Text="Controls how received bytes are displayed in the monitor (a quick view - the log file is the record). ASCII = readable text; CR, LF and CRLF each start a new line, other non-printable bytes are shown as '.', and text without a line ending (e.g. a 'COM1&gt;' prompt) appears immediately. Hex = raw hex bytes (e.g. 48 65 6C), 16 bytes per line. Binary = byte count only. Can be changed while connected. The monitor keeps roughly the latest 120,000 characters; text can be selected and copied."/>
                     <Border Grid.Row="7" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log: (combobox)"/>
                     <TextBlock Grid.Row="8" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Controls the format written to the log file, independent of the display format. ASCII writes received text (control bytes other than CR, LF and Tab become '.'). Hex writes 16 hex bytes per line. Binary writes raw bytes to a .bin file. Locked while logging is active."/>
+                               Text="Controls the format written to the log file, independent of the display format. ASCII writes the received bytes exactly as received (nothing added, removed or replaced). Hex writes every byte as hex, 16 bytes per line. Binary writes raw bytes to a .bin file. Locked while logging is active."/>
                     <Border Grid.Row="9" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log"/>
                     <TextBlock Grid.Row="10" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Toggles file logging for this port. Green = writing received data to a new file in the Log Directory, named by the File Template. Red = logging stopped. Logging stops automatically if the port disconnects unexpectedly. Transmitted (TX) data is not written to the log."/>
+                               Text="Toggles file logging for this port. Green = writing received data to a new file in the Log Directory, named by the File Template. Red = logging stopped. Logging stops automatically if the port disconnects unexpectedly. If the file cannot be created or written (e.g. disk full), logging stops and the reason is shown in the status and the monitor. Transmitted (TX) data is not written to the log."/>
                     <Border Grid.Row="11" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource BtnName}" Text="Open log file (folder icon)"/>
@@ -331,7 +331,7 @@
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="RX / TX / LOG"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Byte counters since the last Clear. RX = bytes received. TX = bytes sent. LOG = bytes received while logging was active."/>
+                               Text="Byte counters since the last Clear. RX = bytes received. TX = bytes sent. LOG = received bytes actually written to the log file."/>
                 </Grid>
 
                 <!-- ══════════════ TX TRANSMIT BAR ══════════════ -->

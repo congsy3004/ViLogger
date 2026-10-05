@@ -10,12 +10,15 @@ namespace EverLogger.Core.Serial;
 /// <summary>
 /// Manages a single serial port connection and reading loop.
 /// </summary>
+/// <remarks>
+/// A connection object is opened once and closed once; to reconnect, create a new instance.
+/// </remarks>
 public class SerialPortConnection : IDisposable
 {
     private SerialPortStream? _port;
     private Thread? _readThread;
     private volatile bool _running;
-    private volatile bool _intentionalClose;
+    private volatile bool _closeRequested;
     private readonly byte[] _buffer = new byte[8192];
     private bool _disposed;
 
@@ -31,11 +34,13 @@ public class SerialPortConnection : IDisposable
 
     /// <summary>
     /// Event fired when data is received from the serial port.
+    /// Raised on the read thread; handlers must be fast and must not block.
     /// </summary>
     public event Action<DataPacket>? DataReceived;
 
     /// <summary>
-    /// Event fired when an error occurs during reading or connection.
+    /// Event fired when the connection fails unexpectedly (device removed, driver error, ...).
+    /// Never raised as a result of <see cref="Close"/>.
     /// </summary>
     public event Action<string, Exception>? ErrorOccurred;
 
@@ -62,6 +67,7 @@ public class SerialPortConnection : IDisposable
 
         try
         {
+            _closeRequested = false;
             _port = new SerialPortStream(Config.PortName, Config.BaudRate, Config.DataBits, Config.Parity, Config.StopBits)
             {
                 Handshake = Config.Handshake,
@@ -91,44 +97,61 @@ public class SerialPortConnection : IDisposable
 
     private void ReadLoop()
     {
+        Exception? failure = null;
+
         while (_running)
         {
+            int bytesRead;
             try
             {
-                if (_port != null && _port.IsOpen)
+                var port = _port;
+                if (port == null || !port.IsOpen)
                 {
-                    int bytesRead = _port.Read(_buffer, 0, _buffer.Length);
-                    if (bytesRead > 0)
-                    {
-                        long timestamp = Stopwatch.GetTimestamp();
-                        byte[] data = new byte[bytesRead];
-                        Array.Copy(_buffer, data, bytesRead);
-
-                        DataReceived?.Invoke(new DataPacket(timestamp, Config.PortName, data));
-                    }
+                    // The port was closed underneath us (e.g. by the driver after a USB unplug)
+                    // without Read() throwing. Treat as a failure instead of spinning silently.
+                    failure = new IOException($"Port {Config.PortName} was closed.");
+                    break;
                 }
+
+                bytesRead = port.Read(_buffer, 0, _buffer.Length);
             }
             catch (TimeoutException)
             {
-                // Timeout is expected, allows the loop to check the _running flag
+                // Expected when no data arrives within ReadTimeout; lets the loop re-check _running.
                 continue;
-            }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is InvalidOperationException)
-            {
-                _running = false;
-
-                // Suppress ErrorOccurred during intentional Close() — the port being
-                // closed by us is not an unexpected disconnect; ConnectionStateChanged
-                // will be fired by Close() instead.
-                if (!_intentionalClose)
-                {
-                    ErrorOccurred?.Invoke(Config.PortName, ex);
-                }
             }
             catch (Exception ex)
             {
-                ErrorOccurred?.Invoke(Config.PortName, ex);
+                // Any other read error is fatal for this connection.
+                failure = ex;
+                break;
             }
+
+            if (bytesRead <= 0) continue;
+
+            byte[] data = new byte[bytesRead];
+            Array.Copy(_buffer, data, bytesRead);
+            var packet = new DataPacket(Stopwatch.GetTimestamp(), Config.PortName, data);
+
+            try
+            {
+                DataReceived?.Invoke(packet);
+            }
+            catch (Exception ex)
+            {
+                // A faulty subscriber must never stop data reception (and therefore logging).
+                Debug.WriteLine($"DataReceived handler error ({Config.PortName}): {ex}");
+            }
+        }
+
+        _running = false;
+
+        // Report only unexpected failures. If Close() was requested, the exception is just the
+        // consequence of our own close and must not be reported (it could otherwise tear down a
+        // newer connection to the same port).
+        if (failure != null && !_closeRequested)
+        {
+            ErrorOccurred?.Invoke(Config.PortName, failure);
         }
     }
 
@@ -137,19 +160,20 @@ public class SerialPortConnection : IDisposable
     /// </summary>
     /// <param name="data">The bytes to write.</param>
     /// <exception cref="InvalidOperationException">Thrown if the port is not open.</exception>
+    /// <exception cref="TimeoutException">The write did not complete within the write timeout.</exception>
+    /// <exception cref="IOException">The write failed.</exception>
+    /// <remarks>
+    /// Write failures are thrown to the caller rather than raised as <see cref="ErrorOccurred"/>:
+    /// a failed transmit (e.g. flow control holding off) must not close the port and stop logging
+    /// of received data. A real port failure is detected by the read loop.
+    /// </remarks>
     public void Write(byte[] data)
     {
-        if (_port == null || !_port.IsOpen)
+        var port = _port;
+        if (port == null || !port.IsOpen)
             throw new InvalidOperationException($"Port {Config.PortName} is not open.");
 
-        try
-        {
-            _port.Write(data, 0, data.Length);
-        }
-        catch (Exception ex) when (ex is IOException || ex is TimeoutException)
-        {
-            ErrorOccurred?.Invoke(Config.PortName, ex);
-        }
+        port.Write(data, 0, data.Length);
     }
 
     /// <summary>
@@ -157,30 +181,31 @@ public class SerialPortConnection : IDisposable
     /// </summary>
     public void Close()
     {
-        _intentionalClose = true;
+        // Set before closing so the read thread knows any resulting exception is expected.
+        // Never reset: this connection instance is finished once closed.
+        _closeRequested = true;
         _running = false;
 
-        if (_port != null && _port.IsOpen)
+        var port = _port;
+        if (port != null && port.IsOpen)
         {
             try
             {
                 // Close the port first — this immediately interrupts any blocking Read()
-                // in the read thread, causing it to throw and exit quickly.
-                _port.Close();
+                // in the read thread, causing it to exit quickly.
+                port.Close();
             }
             catch { }
         }
 
-        // Brief join: the read thread exits as soon as it catches the IOException
-        // from port.Close() or sees _running=false. 50ms is sufficient.
-        if (_readThread != null && _readThread.IsAlive)
+        // The read thread exits within one ReadTimeout (100 ms) at the latest.
+        var thread = _readThread;
+        if (thread != null && thread.IsAlive && thread != Thread.CurrentThread)
         {
-            _readThread.Join(50);
+            thread.Join(250);
         }
 
         ConnectionStateChanged?.Invoke(Config.PortName);
-
-        _intentionalClose = false;
     }
 
     /// <summary>

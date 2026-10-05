@@ -5,6 +5,37 @@
 
 ---
 
+## Unreleased
+
+**Stable terminal view and a lossless, byte-exact log.**
+
+---
+
+### 🛠 Fixed
+
+#### Terminal view
+- The terminal no longer freezes or falls behind under heavy traffic (previously it could stop updating until the port was reconnected). The view is now updated once per UI tick (50 ms) per port, no matter how many chunks arrive.
+- Auto-scroll no longer jumps around. The terminal is a plain read-only text view: text can be selected and copied.
+- A view error can no longer stop the display or crash the app; unexpected UI errors are shown in the status bar.
+
+#### Log file
+- **No data loss under load:** received data could previously be dropped if the disk fell behind (bounded queue). The log queue is now unbounded and every received byte is written.
+- Stopping logging writes everything received up to that moment before the file is closed. On app exit, pending data is written before the process ends.
+- If the log file cannot be created (locked, no permission, bad path) or a write fails later (e.g. disk full), logging stops and the reason is shown in the status and the monitor — no more silent empty logs.
+- A transmit (TX) error no longer disconnects the port or stops logging; it is shown as **Tx Error** instead.
+- Closing a port can no longer interfere with a newly opened connection on the same port.
+
+### 🔄 Changed
+- **AutoScroll OFF now pauses the view** so you can scroll back, read and copy; data is still received and logged. Turning AutoScroll ON jumps to the latest data.
+- **ASCII log = exact received bytes** (control bytes are no longer replaced with `.`).
+- **Hex log and Hex view:** fixed 16 bytes per line, independent of how the driver split the data.
+- **ASCII view:** CR, LF and CRLF each start one new line; other non-printable bytes are shown as `.`.
+- **Binary view:** byte counts are combined per update (`[Binary data: N bytes]`).
+- The terminal keeps roughly the latest 120,000 characters (was 2,000 lines).
+- The **LOG** counter shows the bytes actually written to the file.
+
+---
+
 ## v1.1.1 — 2026-10-05
 
 **New application icon.**

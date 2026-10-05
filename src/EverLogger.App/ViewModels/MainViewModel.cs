@@ -16,6 +16,9 @@ namespace EverLogger.App.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
+    private const int UiTickMs = 50;
+    private const int MaxPacketsPerTick = 100_000;
+
     private readonly SerialPortManager _portManager;
     private readonly DispatcherTimer _uiTimer;
     private readonly ConcurrentQueue<DataPacket> _dataQueue;
@@ -63,7 +66,7 @@ public class MainViewModel : ViewModelBase
             }
         });
 
-        _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+        _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(UiTickMs) };
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
 
@@ -393,14 +396,18 @@ public class MainViewModel : ViewModelBase
 
     // ═══════════════════ Event Handlers ═══════════════════
 
+    /// <summary>
+    /// Serial read thread. Each packet goes to two independent consumers:
+    /// the log writer (lossless, if logging) and the display queue (drained by the UI timer).
+    /// </summary>
     private void PortManager_DataReceived(DataPacket packet)
     {
-        _dataQueue.Enqueue(packet);
-
-        if (_activePorts.TryGetValue(packet.PortName, out var tab) && tab.IsLogging)
+        if (_activePorts.TryGetValue(packet.PortName, out var tab))
         {
-            tab.EnqueueLogData(packet);
+            tab.EnqueueLogData(packet); // no-op when logging is off
         }
+
+        _dataQueue.Enqueue(packet);
     }
 
     private void PortManager_ConnectionStateChanged(string portName)
@@ -553,14 +560,36 @@ public class MainViewModel : ViewModelBase
 
     private void UiTimer_Tick(object? sender, EventArgs e)
     {
+        // 1) Move received data into each port's text buffer. This does no UI work per packet,
+        //    so draining everything is cheap; the cap only guards against a pathological backlog.
         int packetsProcessed = 0;
-        while (packetsProcessed < 5000 && _dataQueue.TryDequeue(out var packet))
+        while (packetsProcessed < MaxPacketsPerTick && _dataQueue.TryDequeue(out var packet))
         {
+            packetsProcessed++;
             if (_activePorts.TryGetValue(packet.PortName, out var tab))
             {
-                tab.AppendData(packet);
+                try
+                {
+                    tab.AppendData(packet);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Display error ({packet.PortName}): {ex}");
+                }
             }
-            packetsProcessed++;
+        }
+
+        // 2) One UI update per port per tick: counters, log health, terminal text.
+        foreach (var tab in Ports)
+        {
+            try
+            {
+                tab.FlushDisplay();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Display flush error ({tab.PortName}): {ex}");
+            }
         }
     }
 
