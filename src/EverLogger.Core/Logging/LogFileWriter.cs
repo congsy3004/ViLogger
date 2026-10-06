@@ -95,7 +95,7 @@ public class LogFileWriter
         if (_started) throw new InvalidOperationException("A LogFileWriter can only be started once.");
 
         Directory.CreateDirectory(_outputDirectory);
-        string fileName = _nameTemplate.Generate(_portName, DateTime.UtcNow);
+        string fileName = _nameTemplate.Generate(_portName, DateTime.Now);
         string path = Path.Combine(_outputDirectory, fileName);
 
         // Open synchronously so a failure (locked file, no permission, bad path) is reported to

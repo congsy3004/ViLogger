@@ -460,6 +460,71 @@
                 </Setter>
             </Style>
 
+            <!-- Editable ComboBox (type a value or pick one from the list), e.g. Baud Rate -->
+            <Style x:Key="EditableComboBox" TargetType="{x:Type ComboBox}" BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="IsEditable" Value="True" />
+                <Setter Property="IsTextSearchEnabled" Value="False" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBox}">
+                            <Grid x:Name="templateRoot" SnapsToDevicePixels="true">
+                                <Popup x:Name="PART_Popup"
+                                       AllowsTransparency="true"
+                                       IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Margin="1"
+                                       Placement="Bottom"
+                                       PopupAnimation="Fade">
+                                    <Border Background="{StaticResource SecondaryBackgroundBrush}"
+                                            BorderBrush="{StaticResource BorderHoverBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            MinHeight="20"
+                                            MaxHeight="260"
+                                            MinWidth="{Binding ActualWidth, ElementName=templateRoot}">
+                                        <ScrollViewer Margin="2">
+                                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"
+                                                            SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                                <ToggleButton x:Name="toggleButton"
+                                              Background="{TemplateBinding Background}"
+                                              BorderBrush="{TemplateBinding BorderBrush}"
+                                              BorderThickness="{TemplateBinding BorderThickness}"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                              Style="{StaticResource ComboBoxToggleButtonStyle}" />
+                                <TextBox x:Name="PART_EditableTextBox"
+                                         Margin="5,0,18,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="{TemplateBinding Foreground}"
+                                         FontSize="{TemplateBinding FontSize}"
+                                         CaretBrush="{StaticResource AccentBrush}"
+                                         SelectionBrush="{StaticResource AccentBrush}"
+                                         IsReadOnly="{Binding IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <TextBox.Template>
+                                        <ControlTemplate TargetType="{x:Type TextBox}">
+                                            <ScrollViewer x:Name="PART_ContentHost"
+                                                          Focusable="false"
+                                                          Background="Transparent"
+                                                          HorizontalScrollBarVisibility="Hidden"
+                                                          VerticalScrollBarVisibility="Hidden" />
+                                        </ControlTemplate>
+                                    </TextBox.Template>
+                                </TextBox>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsKeyboardFocusWithin" Value="true">
+                                    <Setter TargetName="toggleButton" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="false">
+                                    <Setter TargetName="templateRoot" Property="Opacity" Value="0.4" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- ═══════════ CHECKBOX ═══════════ -->
             <Style TargetType="{x:Type CheckBox}">
                 <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundBrush}" />

@@ -146,7 +146,7 @@
 
                     <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="File Template"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Naming pattern for new log files. Tokens: {port} = COM port name, {date} = yyyy-MM-dd, {time} = HH-mm-ss, {datetime} = yyyy-MM-dd_HH-mm-ss, {timestamp} = yyyyMMddHHmmss. Date/time values are in UTC. Extension is added automatically: .log for ASCII/Hex, .bin for Binary. Default: {port}_{datetime}."/>
+                               Text="Naming pattern for new log files. Tokens: {port} = COM port name, {date} = yyyy-MM-dd, {time} = HH-mm-ss, {datetime} = yyyy-MM-dd_HH-mm-ss, {timestamp} = yyyyMMddHHmmss. Date/time values are in local time (your PC clock). Extension is added automatically: .log for ASCII/Hex, .bin for Binary. Default: {port}_{datetime}."/>
                 </Grid>
 
                 <!-- ══════════════ PORT CONFIGURATION CARD ══════════════ -->
@@ -181,7 +181,7 @@
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="Baud Rate"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Select the communication speed. Must match the speed configured on your MCU or device. Common values: 9600, 115200, 921600."/>
+                               Text="Pick a common speed from the list or type any value (e.g. 4800, 250000, 1000000). Must match the speed configured on your MCU or device. Apply Configuration stays disabled until the value is a whole number (50 to 20,000,000). If the adapter does not support the speed, Connect reports an error."/>
                     <Border Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BtnName}" Text="Data Bits"/>

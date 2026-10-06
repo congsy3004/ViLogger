@@ -5,11 +5,16 @@
 
 ---
 
-## Unreleased
+## v1.1.2 — 2026-10-06
 
-**Stable terminal view and a lossless, byte-exact log.**
+**Stable terminal view, a lossless byte-exact log, custom baud rates and local-time file names.**
 
 ---
+
+### ✨ New
+
+- **Custom baud rate:** the Baud Rate box is now editable — pick a common value or type any rate (e.g. 4800, 250000, 1000000). Apply Configuration is enabled only for a whole number from 50 to 20,000,000; if the adapter does not support the rate, Connect reports an error.
+- **Log file names use local time:** `{date}`, `{time}`, `{datetime}` and `{timestamp}` now follow your PC clock (previously UTC, e.g. 7 hours behind in Vietnam).
 
 ### 🛠 Fixed
 
@@ -33,6 +38,13 @@
 - **Binary view:** byte counts are combined per update (`[Binary data: N bytes]`).
 - The terminal keeps roughly the latest 120,000 characters (was 2,000 lines).
 - The **LOG** counter shows the bytes actually written to the file.
+
+### 📦 Download
+
+| File | Description |
+|------|-------------|
+| `ViLogger.exe` | Self-contained portable executable for Windows 10/11 x64 |
+| `ViLogger-v1.1.2-win-x64.zip` | Same executable plus LICENSE, README and third-party notices |
 
 ---
 

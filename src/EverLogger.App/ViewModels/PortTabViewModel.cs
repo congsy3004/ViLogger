@@ -80,7 +80,7 @@ public class PortTabViewModel : ViewModelBase
         CommonBaudRates = commonBaudRates;
 
         // Config commands
-        ApplyConfigCommand = new RelayCommand(ApplyConfig, () => _selectedPort != null);
+        ApplyConfigCommand = new RelayCommand(ApplyConfig, () => _selectedPort != null && IsBaudRateTextValid);
         ResetConfigCommand = new RelayCommand(ResetConfig, () => IsConfigured && !IsConnected);
 
         // Port control commands
@@ -142,6 +142,44 @@ public class PortTabViewModel : ViewModelBase
     {
         get => _selectedBaudRate;
         set => SetProperty(ref _selectedBaudRate, value);
+    }
+
+    /// <summary>Lowest / highest baud rate accepted from the editable baud rate box.</summary>
+    public const int MinBaudRate = 50;
+    public const int MaxBaudRate = 20_000_000;
+
+    private string _baudRateText = "115200";
+
+    /// <summary>
+    /// Text of the editable baud rate box: pick a common value or type any rate
+    /// (e.g. 4800, 250000, 1000000). Apply is enabled only while the text is a valid rate.
+    /// Whether the adapter supports the rate is checked by the driver on Connect.
+    /// </summary>
+    public string BaudRateText
+    {
+        get => _baudRateText;
+        set
+        {
+            if (SetProperty(ref _baudRateText, value ?? string.Empty))
+            {
+                if (TryParseBaudRate(_baudRateText, out int baud))
+                {
+                    SelectedBaudRate = baud;
+                }
+                OnPropertyChanged(nameof(IsBaudRateTextValid));
+                ((RelayCommand)ApplyConfigCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>True when <see cref="BaudRateText"/> is a whole number within the accepted range.</summary>
+    public bool IsBaudRateTextValid => TryParseBaudRate(_baudRateText, out _);
+
+    private static bool TryParseBaudRate(string text, out int baud)
+    {
+        return int.TryParse(text?.Trim(), System.Globalization.NumberStyles.None,
+                   System.Globalization.CultureInfo.InvariantCulture, out baud)
+               && baud >= MinBaudRate && baud <= MaxBaudRate;
     }
 
     /// <summary>

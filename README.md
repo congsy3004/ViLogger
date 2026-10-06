@@ -14,13 +14,13 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 ## Features
 
 - **Multi-port** — monitor up to **4 COM ports** at once (1×1, 1×2, 1×3 or 2×2 layout).
-- **Full UART settings** — baud rate, data bits, parity, stop bits and handshake (flow control).
+- **Full UART settings** — any baud rate (pick a common one or type your own), data bits, parity, stop bits and handshake (flow control).
 - **Custom port names** — label each port ("GPS", "Debug UART", …) next to the detected device name.
 - **Live display** in **ASCII**, **Hex** or **Binary**, switchable at any time.
-- **File logging** per port in ASCII, Hex or raw Binary. Log files contain **only the received bytes** — no timestamps or extra text.
+- **Lossless file logging** per port in ASCII, Hex or raw Binary. Log files contain **only the received bytes** — no timestamps or extra text — and no data is dropped under load.
 - **Transmit bar** with ASCII / HEX mode, visible `<CR>` / `<LF>` tokens and selectable line endings.
 - **Hardware removed indicator** — a red badge appears when a USB-serial device is unplugged; the COM list refreshes automatically.
-- **High performance** — dedicated receive thread per port, background log writer, virtualized terminal (30 fps UI updates).
+- **High performance** — dedicated receive thread per port, background log writer, terminal refreshed every 50 ms regardless of traffic.
 - **Single portable `.exe`** — the .NET runtime is bundled, nothing to install.
 
 ## Download
@@ -42,7 +42,7 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 ## Quick start
 
 1. Click **+ Add Port** (up to 4 panels).
-2. In the port panel, choose the **COM port**, **baud rate** and other UART settings, optionally enter a name, then click **Apply Configuration**.
+2. In the port panel, choose the **COM port**, pick or type the **baud rate**, set the other UART settings, optionally enter a name, then click **Apply Configuration**.
 3. Click **Disconnected** to connect (the button turns green: **Connected**).
 4. Received data appears in the monitor. Use **View** to switch between ASCII / Hex / Binary.
 5. Pick a **Log format** and click **Log** to start recording. Click it again to stop.
@@ -56,15 +56,15 @@ Click **? Help** in the app for a full description of every button.
 |---|---|
 | **Enter** | Send the text in the TX box |
 | **Ctrl+Enter** | Insert `<CR>`; press again right after it to insert `<LF>` (HEX mode: `0D`, then `0A`) |
-| **ASCII / HEX** | In HEX mode, type bytes such as `48 65 6C 6C 6F` |
-| **Line ending** | Append None / CR / LF / CRLF automatically |
+| **ASCII / HEX** | ASCII mode sends 7-bit ASCII only (other characters are sent as `?`). In HEX mode, type bytes such as `48 65 6C 6C 6F` |
+| **Line ending** | Appends None / CR / LF / CRLF — **ASCII mode only**; in HEX mode add `0D 0A` yourself |
 
 Sent data is echoed in the monitor as `TX>> ...` (it is not written to the log file).
 
 ### Log files
 
 - **Directory:** shared by all ports, set in the main toolbar (📁 opens it in Explorer).
-- **File name template:** default `{port}_{datetime}`. Available tokens:
+- **File name template:** default `{port}_{datetime}`, using your PC's local time. Available tokens:
 
   | Token | Example |
   |---|---|
@@ -75,20 +75,24 @@ Sent data is echoed in the monitor as `TX>> ...` (it is not written to the log f
   | `{timestamp}` | `20261005143000` |
 
 - **Formats:**
-  - **ASCII** (`.log`) — received text; control characters other than CR, LF and TAB are written as `.`.
-  - **Hex** (`.log`) — bytes as hex, up to 16 per line.
-  - **Binary** (`.bin`) — exact raw bytes.
+  - **ASCII** (`.log`) — the exact received bytes (same content as Binary, for opening in a text editor).
+  - **Hex** (`.log`) — every byte as two hex digits, exactly 16 bytes per line (file is 3× the data size).
+  - **Binary** (`.bin`) — the exact received bytes.
 - A log file is locked while it is being written; stop logging before opening it.
 
 ## Known limitations
 
 - Maximum 4 ports at the same time.
+- **No timestamps** in the log or the view — not suitable for timing measurements.
+- The terminal is a live preview that keeps only the latest ~120,000 characters; the **log file is the record**.
+- Wrong baud/parity settings are not detected (parity/framing errors are not reported).
 - After a device is unplugged, reconnect manually (press **Connect**, then **Log** again).
 - Transmitted (TX) data is not written to log files.
 - ASCII view shows non-printable / non-ASCII bytes as `.` (no UTF-8 decoding).
 - No log rotation and no protocol decoders yet.
 
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full change history.
+See [docs/LIMITS.md](docs/LIMITS.md) for buffer sizes, timing and other limits in detail, and
+[RELEASE_NOTES.md](RELEASE_NOTES.md) for the full change history.
 
 ## Building from source
 
@@ -114,7 +118,7 @@ dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --
 | `src/EverLogger.Core` | Serial port handling, data queues and log writers |
 | `src/EverLogger.App/Resources/app.ico` | Application icon |
 | `tools/make_icon.ps1` | Script that regenerates the icon (`pwsh tools/make_icon.ps1 -OutIco src/EverLogger.App/Resources/app.ico -PreviewPng docs/icon.png`) |
-| `docs/` | Images used by this README |
+| `docs/` | README images and [LIMITS.md](docs/LIMITS.md) (detailed limits) |
 
 ### Releasing
 
