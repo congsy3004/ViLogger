@@ -65,7 +65,7 @@ The log path and the display path are independent: a slow or paused terminal nev
 | Device unplugged / port error | Logging **stops automatically**. Data still inside the adapter/driver is lost. Reconnect is manual, so there is a **gap**. Pressing Log again starts a **new file**. | Check for the HARDWARE REMOVED badge / `[--- … Disconnected ---]` line before trusting a long log. |
 | Very long runs | No rotation — the file just grows. **FAT32 USB sticks stop at 4 GB:** at 921600 baud continuous that is ~13 h (Binary/ASCII) or **~4.3 h (Hex)**. | Log to an NTFS drive; prefer Binary/ASCII for long captures. |
 | Slow disk (network share, slow USB stick) | Data waits in RAM (no loss), memory use grows. If the drive disappears, the write fails → logging stops with `Log error: …`. | Log to a local disk. |
-| Disk full / no permission | Logging stops (or refuses to start) and shows `Log error: …` in the status bar and terminal. | Watch the status bar; don't run from `C:\Program Files`. |
+| Disk full / no permission | Logging stops (or refuses to start) and shows `Log error: …` in the status bar and terminal. | Watch the status bar; if the app folder is read-only, ViLogger defaults to `Documents\ViLogger\Logs`. |
 
 ### File naming
 Date/time tokens use your PC's **local time**. Characters that are not allowed in file names are replaced with `_`.

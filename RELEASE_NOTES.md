@@ -5,6 +5,36 @@
 
 ---
 
+## v1.1.3 — 2026-11-13
+
+**Company-ready portable build: TX HEX input fix, multi-panel port protection, accurate connection/log error reporting, natural port sorting and read-only folder fallback.**
+
+---
+
+### ✨ New
+
+- **Read-only folder fallback:** when `ViLogger.exe` is run from a read-only location (such as a shared company network drive or `C:\Program Files`), the default log directory automatically falls back to `Documents\ViLogger\Logs` instead of failing on first log.
+- **Version in Help:** the **? Help** window now displays the exact application version in its title and header.
+- **Natural COM port sorting:** COM ports are listed in numeric order (`COM1, COM2, COM10, COM30`) rather than alphabetical order.
+
+### 🛠 Fixed
+
+- **TX HEX input:** typing lowercase hex digits or multiple byte pairs no longer resets the caret to the start of the box or leaves invalid characters visible; pasting multiline text in ASCII mode preserves the caret position.
+- **Multi-port safety:** two panels can no longer apply configuration to the same COM port (which could previously divert received data/logging or close an active port).
+- **Port list refresh:** clicking **+ Add Port** or hot-plugging another USB-serial adapter no longer clears the selected COM port in unconfigured panels.
+- **Connect & Log error handling:** a failed **Connect** (port busy, unsupported baud rate or framing) now disposes the serial stream cleanly, shows the exact error without flashing `"Connected"`, and keeps any pre-started log file open. **Connect All**, **Log All**, and per-port log errors now accurately update the global status bar.
+- **Log file naming & toolbar inputs:** date/time tokens use `InvariantCulture` so non-Gregorian Windows regional calendars still generate standard `yyyy-MM-dd_HH-mm-ss` file names; `Log Directory` and `File Template` edits apply immediately while typing.
+- **Single-file packaging:** suppressed stray `.pdb` files during single-file publish and added transitive `RJCP.*` / `Microsoft.Extensions.*` packages to `THIRD-PARTY-NOTICES.md`.
+
+### 📦 Download
+
+| File | Description |
+|------|-------------|
+| `ViLogger.exe` | Self-contained portable executable for Windows 10/11 x64 |
+| `ViLogger-v1.1.3-win-x64.zip` | Same executable plus LICENSE, README, LIMITS and third-party notices |
+
+---
+
 ## v1.1.2 — 2026-10-06
 
 **Stable terminal view, a lossless byte-exact log, custom baud rates and local-time file names.**

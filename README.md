@@ -36,8 +36,9 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 > Click **More info → Run anyway**.
 
 > [!TIP]
-> By default, logs are saved to a `Logs` folder next to `ViLogger.exe`. Avoid running it from
-> `C:\Program Files`, or choose a different log directory in the toolbar.
+> By default, logs are saved to a `Logs` folder next to `ViLogger.exe` (or `Documents\ViLogger\Logs` if the
+> app folder is read-only, such as `C:\Program Files` or a shared network drive). You can change the log
+> directory at any time in the toolbar.
 
 ## Quick start
 
