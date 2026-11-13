@@ -143,7 +143,9 @@ public class SerialPortManager : IDisposable
     public static string[] GetAvailablePorts()
     {
         using var tempPort = new SerialPortStream();
-        return tempPort.GetPortNames();
+        return tempPort.GetPortNames()
+            .OrderBy(PortSortKey)
+            .ToArray();
     }
 
     /// <summary>
@@ -156,8 +158,19 @@ public class SerialPortManager : IDisposable
         var descriptions = tempPort.GetPortDescriptions();
         return descriptions
             .Select(d => (d.Port, d.Description))
-            .OrderBy(d => d.Port)
+            .OrderBy(d => PortSortKey(d.Port))
             .ToArray();
+    }
+
+    private static (int Number, string Name) PortSortKey(string? portName)
+    {
+        if (portName != null &&
+            portName.StartsWith("COM", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(portName.AsSpan(3), out int num))
+        {
+            return (num, portName.ToUpperInvariant());
+        }
+        return (int.MaxValue, portName ?? string.Empty);
     }
 
     private void OnDataReceived(DataPacket packet) => DataReceived?.Invoke(packet);

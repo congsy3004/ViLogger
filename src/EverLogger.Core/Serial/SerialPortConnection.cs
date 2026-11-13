@@ -89,9 +89,11 @@ public class SerialPortConnection : IDisposable
             };
             _readThread.Start();
         }
-        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+        catch
         {
-            ErrorOccurred?.Invoke(Config.PortName, ex);
+            try { _port?.Dispose(); } catch { }
+            _port = null;
+            throw;
         }
     }
 

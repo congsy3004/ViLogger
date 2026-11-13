@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 
 namespace EverLogger.Core.Logging;
@@ -32,10 +33,10 @@ public class LogFileNameTemplate
     {
         var name = _template
             .Replace("{port}", portName)
-            .Replace("{date}", timestamp.ToString("yyyy-MM-dd"))
-            .Replace("{time}", timestamp.ToString("HH-mm-ss"))
-            .Replace("{datetime}", timestamp.ToString("yyyy-MM-dd_HH-mm-ss"))
-            .Replace("{timestamp}", timestamp.ToString("yyyyMMddHHmmss"));
+            .Replace("{date}", timestamp.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+            .Replace("{time}", timestamp.ToString("HH-mm-ss", CultureInfo.InvariantCulture))
+            .Replace("{datetime}", timestamp.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture))
+            .Replace("{timestamp}", timestamp.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture));
 
         name += _extension;
 

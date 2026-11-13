@@ -46,6 +46,8 @@ public class PortTabViewModel : ViewModelBase
     private readonly Func<bool> _canRemoveFunc;
     private readonly Func<string> _getLogDirectory;
     private readonly Func<string> _getLogFileTemplate;
+    private readonly Func<PortTabViewModel, string, bool> _canUsePort;
+    private readonly Action<string>? _reportStatus;
 
     // Tx state
     private string _txInput = string.Empty;
@@ -66,7 +68,9 @@ public class PortTabViewModel : ViewModelBase
         Action<PortTabViewModel> removeAction,
         Func<bool> canRemove,
         Func<string> getLogDirectory,
-        Func<string> getLogFileTemplate)
+        Func<string> getLogFileTemplate,
+        Func<PortTabViewModel, string, bool>? canUsePort = null,
+        Action<string>? reportStatus = null)
     {
         _config = new SerialPortConfig();
         _connectAction = connectAction;
@@ -76,11 +80,15 @@ public class PortTabViewModel : ViewModelBase
         _canRemoveFunc = canRemove;
         _getLogDirectory = getLogDirectory;
         _getLogFileTemplate = getLogFileTemplate;
+        _canUsePort = canUsePort ?? ((_, _) => true);
+        _reportStatus = reportStatus;
         AvailablePorts = availablePorts;
         CommonBaudRates = commonBaudRates;
 
         // Config commands
-        ApplyConfigCommand = new RelayCommand(ApplyConfig, () => _selectedPort != null && IsBaudRateTextValid);
+        ApplyConfigCommand = new RelayCommand(
+            ApplyConfig,
+            () => _selectedPort != null && IsBaudRateTextValid && _canUsePort(this, _selectedPort.PortName));
         ResetConfigCommand = new RelayCommand(ResetConfig, () => IsConfigured && !IsConnected);
 
         // Port control commands
@@ -511,7 +519,7 @@ public class PortTabViewModel : ViewModelBase
 
     private void ApplyConfig()
     {
-        if (_selectedPort == null) return;
+        if (_selectedPort == null || !_canUsePort(this, _selectedPort.PortName)) return;
 
         Config = _config with
         {
@@ -556,6 +564,7 @@ public class PortTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusText = $"Log error: {ex.Message}";
+            _reportStatus?.Invoke($"Log error ({PortName}): {ex.Message}");
             AddLine($"[--- Logging could not start: {ex.Message} ---]");
             return;
         }
@@ -631,6 +640,7 @@ public class PortTabViewModel : ViewModelBase
         {
             StopLogging();
             StatusText = $"Log error: {fault.Message}";
+            _reportStatus?.Invoke($"Log error ({PortName}): {fault.Message}");
             AddLine($"[--- Logging stopped: {fault.Message} ---]");
         }
     }

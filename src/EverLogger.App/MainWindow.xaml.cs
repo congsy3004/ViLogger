@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -132,6 +133,68 @@ public partial class MainWindow : Window
                 });
             }
         }
+    }
+
+    private bool _updatingTxText;
+
+    /// <summary>
+    /// Synchronizes TX input formatting (HEX byte grouping / ASCII CR-LF tokens) while keeping
+    /// the caret at the expected logical position instead of jumping to index 0.
+    /// </summary>
+    private void TxTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_updatingTxText) return;
+        if (sender is not TextBox tb || tb.DataContext is not PortTabViewModel portVm) return;
+
+        string rawText = tb.Text;
+        if (rawText == portVm.TxInput) return;
+
+        int caret = Math.Clamp(tb.CaretIndex, 0, rawText.Length);
+        string beforeCaret = rawText.Substring(0, caret);
+
+        _updatingTxText = true;
+        try
+        {
+            portVm.TxInput = rawText;
+            string formatted = portVm.TxInput;
+
+            if (tb.Text != formatted)
+            {
+                BindingOperations.GetBindingExpression(tb, TextBox.TextProperty)?.UpdateTarget();
+            }
+
+            if (portVm.SendAsHex)
+            {
+                int hexBefore = beforeCaret.Count(char.IsAsciiHexDigit);
+                tb.CaretIndex = CaretAfterHexDigits(formatted, hexBefore);
+            }
+            else
+            {
+                string expandedBefore = beforeCaret
+                    .Replace("\r\n", "<CR><LF>")
+                    .Replace("\r",   "<CR>")
+                    .Replace("\n",   "<LF>");
+                tb.CaretIndex = Math.Min(expandedBefore.Length, formatted.Length);
+            }
+        }
+        finally
+        {
+            _updatingTxText = false;
+        }
+    }
+
+    private static int CaretAfterHexDigits(string formatted, int hexDigitCount)
+    {
+        if (hexDigitCount <= 0) return 0;
+        int seen = 0;
+        for (int i = 0; i < formatted.Length; i++)
+        {
+            if (char.IsAsciiHexDigit(formatted[i]) && ++seen == hexDigitCount)
+            {
+                return i + 1;
+            }
+        }
+        return formatted.Length;
     }
 
     /// <summary>

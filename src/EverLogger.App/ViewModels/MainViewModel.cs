@@ -24,7 +24,7 @@ public class MainViewModel : ViewModelBase
     private readonly ConcurrentQueue<DataPacket> _dataQueue;
     private readonly ConcurrentDictionary<string, PortTabViewModel> _activePorts = new(StringComparer.OrdinalIgnoreCase);
 
-    private string _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+    private string _logDirectory = ResolveDefaultLogDirectory();
     private string _logFileNameTemplate = "{port}_{datetime}";
     private bool _isAllConnected;
     private bool _isAllLogging;
@@ -188,7 +188,10 @@ public class MainViewModel : ViewModelBase
             removeAction: RemovePort,
             canRemove: () => Ports.Count > 1,
             getLogDirectory: () => LogDirectory,
-            getLogFileTemplate: () => LogFileNameTemplate);
+            getLogFileTemplate: () => LogFileNameTemplate,
+            canUsePort: (t, portName) => !Ports.Any(p =>
+                p != t && p.IsConfigured && string.Equals(p.PortName, portName, StringComparison.OrdinalIgnoreCase)),
+            reportStatus: msg => StatusBarText = msg);
 
         tab.PropertyChanged += (s, e) =>
         {
@@ -219,6 +222,8 @@ public class MainViewModel : ViewModelBase
 
     private void RefreshPorts()
     {
+        var selectedByTab = Ports.ToDictionary(p => p, p => p.SelectedPort?.PortName);
+
         AvailablePorts.Clear();
         try
         {
@@ -232,6 +237,15 @@ public class MainViewModel : ViewModelBase
             foreach (var port in SerialPortManager.GetAvailablePorts())
             {
                 AvailablePorts.Add(new PortInfo(port, ""));
+            }
+        }
+
+        foreach (var (tab, portName) in selectedByTab)
+        {
+            if (!string.IsNullOrEmpty(portName))
+            {
+                tab.SelectedPort = AvailablePorts.FirstOrDefault(
+                    p => string.Equals(p.PortName, portName, StringComparison.OrdinalIgnoreCase));
             }
         }
     }
@@ -255,11 +269,13 @@ public class MainViewModel : ViewModelBase
                 tab.IsConnected = true;
                 tab.StatusText = "Connected";
                 tab.AddSystemMessage($"[--- {tab.PortName} Connected ---]");
+                StatusBarText = $"{tab.PortName} connected";
             }
-            StatusBarText = $"{tab.PortName} connected";
         }
         catch (Exception ex)
         {
+            try { _portManager.RemovePort(tab.PortName); } catch { }
+            tab.IsConnected = false;
             tab.StatusText = $"Error: {ex.Message}";
             StatusBarText = $"Failed to connect {tab.PortName}: {ex.Message}";
         }
@@ -295,14 +311,26 @@ public class MainViewModel : ViewModelBase
 
     private void ConnectAll()
     {
+        int attempted = 0, connected = 0;
+        string? lastError = null;
         foreach (var tab in Ports)
         {
             if (tab.IsConfigured && !tab.IsConnected)
             {
+                attempted++;
                 ConnectPort(tab);
+                if (tab.IsConnected) connected++;
+                else lastError = StatusBarText;
             }
         }
-        StatusBarText = "All configured ports connected";
+        if (attempted > 0)
+        {
+            StatusBarText = connected == attempted
+                ? "All configured ports connected"
+                : (attempted == 1 && lastError != null
+                    ? lastError
+                    : $"Connected {connected} of {attempted} port(s) — check port status for errors");
+        }
     }
 
     private void DisconnectAll()
@@ -328,15 +356,27 @@ public class MainViewModel : ViewModelBase
 
     private void LogAllOn()
     {
+        int attempted = 0, started = 0;
+        string? lastError = null;
         foreach (var tab in Ports)
         {
             if (tab.IsConfigured && !tab.IsLogging)
             {
+                attempted++;
                 tab.StartLogging();
+                if (tab.IsLogging) started++;
+                else lastError = StatusBarText;
             }
         }
         UpdateGlobalStates();
-        StatusBarText = "Logging started on all configured ports";
+        if (attempted > 0)
+        {
+            StatusBarText = started == attempted
+                ? "Logging started on all configured ports"
+                : (attempted == 1 && lastError != null
+                    ? lastError
+                    : $"Logging started on {started} of {attempted} port(s) — check port status for errors");
+        }
     }
 
     private void LogAllOff()
@@ -418,7 +458,16 @@ public class MainViewModel : ViewModelBase
             {
                 bool isOpen = _portManager.Connections.TryGetValue(portName, out var conn) && conn.IsOpen;
                 tab.IsConnected = isOpen;
-                tab.StatusText = isOpen ? "Connected" : "Disconnected";
+                if (isOpen)
+                {
+                    tab.StatusText = "Connected";
+                }
+                else if (!tab.IsHardwareRemoved &&
+                         !tab.StatusText.StartsWith("Error:", StringComparison.Ordinal) &&
+                         !tab.StatusText.StartsWith("Log error:", StringComparison.Ordinal))
+                {
+                    tab.StatusText = "Disconnected";
+                }
             }
             UpdateGlobalStates();
         });
@@ -556,6 +605,8 @@ public class MainViewModel : ViewModelBase
         ((RelayCommand)DisconnectAllCommand).RaiseCanExecuteChanged();
         ((RelayCommand)LogAllOnCommand).RaiseCanExecuteChanged();
         ((RelayCommand)LogAllOffCommand).RaiseCanExecuteChanged();
+        foreach (var p in Ports)
+            ((RelayCommand)p.ApplyConfigCommand).RaiseCanExecuteChanged();
     }
 
     private void UiTimer_Tick(object? sender, EventArgs e)
@@ -590,6 +641,36 @@ public class MainViewModel : ViewModelBase
             {
                 Debug.WriteLine($"Display flush error ({tab.PortName}): {ex}");
             }
+        }
+    }
+
+    /// <summary>
+    /// Uses a Logs folder next to ViLogger.exe when writable; falls back to Documents\ViLogger\Logs
+    /// when launched from a read-only location (e.g. Program Files or a shared network drive).
+    /// </summary>
+    private static string ResolveDefaultLogDirectory()
+    {
+        string exeDir = Path.GetDirectoryName(Environment.ProcessPath)
+                        ?? AppDomain.CurrentDomain.BaseDirectory;
+        string portableLogs = Path.Combine(exeDir, "Logs");
+
+        try
+        {
+            string probeDir = Directory.Exists(portableLogs) ? portableLogs : exeDir;
+            string probeFile = Path.Combine(probeDir, $".vilogger_write_test_{Guid.NewGuid():N}");
+            using (new FileStream(probeFile, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose))
+            {
+            }
+            return portableLogs;
+        }
+        catch
+        {
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrWhiteSpace(docs))
+            {
+                return Path.Combine(docs, "ViLogger", "Logs");
+            }
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ViLogger", "Logs");
         }
     }
 

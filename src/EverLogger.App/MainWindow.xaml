@@ -121,7 +121,7 @@
                 <DockPanel Grid.Row="1">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Log Directory:" Style="{StaticResource HeaderLabel}"/>
-                        <TextBox Text="{Binding LogDirectory}" 
+                        <TextBox Text="{Binding LogDirectory, UpdateSourceTrigger=PropertyChanged}" 
                                  Width="300" Height="25" 
                                  VerticalAlignment="Center"/>
                         <Button Content="..." 
@@ -138,7 +138,7 @@
                         <Border Width="1" Height="16" Background="{StaticResource BorderBrush}" Margin="12,0,6,0"/>
 
                         <TextBlock Text="File Template:" Style="{StaticResource HeaderLabel}"/>
-                        <TextBox Text="{Binding LogFileNameTemplate}" 
+                        <TextBox Text="{Binding LogFileNameTemplate, UpdateSourceTrigger=PropertyChanged}" 
                                  Width="180" Height="25" 
                                  VerticalAlignment="Center"/>
                     </StackPanel>
@@ -505,7 +505,8 @@
                                             <TextBlock Text="TX" Foreground="#539BF5" FontWeight="Bold" FontSize="10"/>
                                         </Border>
 
-                                        <TextBox Text="{Binding TxInput, UpdateSourceTrigger=PropertyChanged}" 
+                                        <TextBox Text="{Binding TxInput, Mode=TwoWay, UpdateSourceTrigger=Explicit}" 
+                                                 TextChanged="TxTextBox_TextChanged"
                                                  PreviewKeyDown="TxTextBox_PreviewKeyDown"
                                                  FontFamily="Consolas, Cascadia Code, Courier New" 
                                                  FontSize="11" 

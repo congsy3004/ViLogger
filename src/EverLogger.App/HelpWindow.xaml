@@ -57,7 +57,7 @@
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Button Reference" FontSize="15" FontWeight="SemiBold" Foreground="#E4E4E7"/>
-                    <TextBlock Text="Describes every control in ViLogger" FontSize="11" Foreground="#71717A"/>
+                    <TextBlock x:Name="SubtitleText" Text="Describes every control in ViLogger" FontSize="11" Foreground="#71717A"/>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -131,7 +131,7 @@
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log Directory"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="The folder where all log files are written. Shared across all ports. Type a path directly or use the ... browse button to pick a folder."/>
+                               Text="The folder where all log files are written (shared across all ports). Defaults to a Logs folder next to ViLogger.exe, or Documents\ViLogger\Logs if the app folder is read-only. Type a path directly or use ... to pick a folder."/>
                     <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="... (browse)"/>
@@ -196,12 +196,12 @@
 
                     <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="Stop Bits"/>
                     <TextBlock Grid.Row="8" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Number of stop bits that mark the end of each byte. One = standard (most devices). OnePointFive / Two = used in older or specific industrial protocols."/>
+                               Text="Number of stop bits that mark the end of each byte. One = standard (most devices). One5 (1.5) / Two = used in older or specific industrial protocols."/>
                     <Border Grid.Row="9" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="Handshake"/>
                     <TextBlock Grid.Row="10" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Flow control method. None = no flow control (most common for MCU UART). RTS/CTS = hardware handshake using dedicated signal lines. XOnXOff = software handshake using special ASCII characters (DC1/DC3)."/>
+                               Text="Flow control method. None = no flow control (most common for MCU UART). Rts = hardware RTS/CTS handshake. XOn = software XOn/XOff handshake (DC1/DC3). Dtr = DTR/DSR handshake (and combined options)."/>
                     <Border Grid.Row="11" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource BtnName}" Text="Name"/>
