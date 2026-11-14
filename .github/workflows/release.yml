@@ -18,6 +18,9 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Test
+        run: dotnet test EverLogger.sln -c Release
+
       - name: Publish single-file exe
         shell: pwsh
         run: |
