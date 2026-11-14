@@ -1,7 +1,36 @@
-# ViLogger — Release Notes
+# ARVSerialTool — Release Notes
 
-> **ViLogger** is a high-performance, portable serial port monitor and data logger for Windows.
+> **ARVSerialTool** *(formerly ViLogger)* is a high-performance, portable serial port monitor, file transmitter, and data logger for Windows.
 > Built with .NET 8 / WPF. Self-contained — no installation required.
+
+---
+
+## v1.2.0 — 2026-11-14
+
+**Rebranded from ViLogger to ARVSerialTool, added the integrated Send File feature, and introduced the new ARVSerialTool application icon.**
+
+---
+
+### ✨ New
+
+- **File Transmit (`Send File`):** click **File** on any port's TX bar to open the collapsible File Transmit Panel and stream files directly over that serial port while RX monitoring and logging continue uninterrupted.
+  - **Raw mode:** streams exact file bytes unmodified in configurable chunks (`1 – 4096 B`, default `256 B`).
+  - **Text mode:** streams line-by-line preserving all byte values (including `0x80–0xFF`) with selectable line-ending conversion (`AsIs`, `CRLF`, `LF`, `CR`) and optional per-line delay.
+  - **Hex mode:** parses formatted hexadecimal text files (space/comma/dash/semicolon separated, `0x` prefixes, continuous even-length hex, `#` / `//` comments, and Hex `.log` files), validates the entire file before transmitting any byte, and sends the decoded binary payload.
+  - **Baud-aware pacing & live controls:** optional inter-chunk / inter-line **Delay (`0 – 60000 ms`)**, internal slow-baud wire slicing (~200 ms per write) to avoid `500 ms` TX timeouts on low baud rates, live progress indicator, **■ Stop** cancellation, and automatic abort if the port disconnects.
+- **New application icon & thumbnail:** redesigned icon (`src/EverLogger.App/Resources/app.ico`, `docs/icon.png`) featuring the **`ARV`** wordmark inside a dark terminal tile with a `>_` prompt, RX/TX status dots, and a UART digital square-wave pulse train.
+- **Documentation & Help:** updated the in-app **? Help** reference, `README.md`, and `docs/LIMITS.md` for `ARVSerialTool` and the File Transmit controls.
+
+### 🔄 Changed
+
+- **Renamed application to `ARVSerialTool`:** updated executable output to `ARVSerialTool.exe`, window titles, assembly/product metadata, release archive names, and read-only log fallback directory (`Documents\ARVSerialTool\Logs`).
+
+### 📦 Download
+
+| File | Description |
+|------|-------------|
+| `ARVSerialTool.exe` | Self-contained portable executable for Windows 10/11 x64 |
+| `ARVSerialTool-v1.2.0-win-x64.zip` | Same executable plus LICENSE, README, LIMITS and third-party notices |
 
 ---
 

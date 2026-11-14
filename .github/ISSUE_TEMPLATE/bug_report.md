@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with ViLogger
+about: Report a problem with ARVSerialTool
 labels: bug
 ---
 
@@ -15,7 +15,7 @@ A clear description of the problem.
 **Expected behavior**
 
 **Environment**
-- ViLogger version:
+- ARVSerialTool version:
 - Windows version:
 - USB-serial adapter / device (e.g. CP2102, CH340, FTDI):
 - Baud rate and UART settings:

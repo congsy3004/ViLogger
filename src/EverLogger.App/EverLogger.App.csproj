@@ -6,14 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <RootNamespace>EverLogger.App</RootNamespace>
-    <AssemblyName>ViLogger</AssemblyName>
+    <AssemblyName>ARVSerialTool</AssemblyName>
     <ApplicationIcon Condition="Exists('Resources\app.ico')">Resources\app.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
-    <Version>1.1.3</Version>
-    <Product>ViLogger</Product>
-    <AssemblyTitle>ViLogger - Serial Monitor &amp; Logger</AssemblyTitle>
-    <Description>Portable multi-port serial monitor and data logger for Windows.</Description>
+    <Version>1.2.0</Version>
+    <Product>ARVSerialTool</Product>
+    <AssemblyTitle>ARVSerialTool - Serial Monitor &amp; Logger</AssemblyTitle>
+    <Description>Portable multi-port serial monitor, file transmitter, and data logger for Windows.</Description>
     <Authors>congsy3004</Authors>
     <Company>congsy3004</Company>
     <Copyright>Copyright (c) 2026 congsy3004</Copyright>

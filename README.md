@@ -1,13 +1,13 @@
-<img src="docs/icon.png" alt="ViLogger icon" width="96" align="right"/>
+<img src="docs/icon.png" alt="ARVSerialTool icon" width="96" align="right"/>
 
-# ViLogger
+# ARVSerialTool
 
 [![Build](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml/badge.svg)](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml)
 [![Latest release](https://img.shields.io/github/v/release/congsy3004/ViLogger)](https://github.com/congsy3004/ViLogger/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**ViLogger** is a fast, portable serial port (UART / COM) monitor and data logger for Windows.
-Watch up to 4 ports side by side, send commands, and record the raw received data to files — no installation required.
+**ARVSerialTool** *(formerly ViLogger)* is a fast, portable serial port (UART / COM) monitor, file transmitter, and data logger for Windows.
+Watch up to 4 ports side by side, send commands or files, and record the raw received data to files — no installation required.
 
 ---
 
@@ -19,6 +19,7 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 - **Live display** in **ASCII**, **Hex** or **Binary**, switchable at any time.
 - **Lossless file logging** per port in ASCII, Hex or raw Binary. Log files contain **only the received bytes** — no timestamps or extra text — and no data is dropped under load.
 - **Transmit bar** with ASCII / HEX mode, visible `<CR>` / `<LF>` tokens and selectable line endings.
+- **File transmit (`Send File`)** — stream files in **Raw** binary, **Text** (with line-ending conversion and per-line pacing), or parsed **Hex** bytes, with live progress and cancellation while RX monitoring and logging continue.
 - **Hardware removed indicator** — a red badge appears when a USB-serial device is unplugged; the COM list refreshes automatically.
 - **High performance** — dedicated receive thread per port, background log writer, terminal refreshed every 50 ms regardless of traffic.
 - **Single portable `.exe`** — the .NET runtime is bundled, nothing to install.
@@ -26,8 +27,8 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 ## Download
 
 1. Go to the [**Releases**](https://github.com/congsy3004/ViLogger/releases/latest) page.
-2. Download **`ViLogger.exe`** (or the `.zip`).
-3. Put it in a folder you can write to (e.g. `Documents\ViLogger`) and run it.
+2. Download **`ARVSerialTool.exe`** (or the `.zip`).
+3. Put it in a folder you can write to (e.g. `Documents\ARVSerialTool`) and run it.
 
 **Requirements:** Windows 10 or 11, 64-bit.
 
@@ -36,7 +37,7 @@ Watch up to 4 ports side by side, send commands, and record the raw received dat
 > Click **More info → Run anyway**.
 
 > [!TIP]
-> By default, logs are saved to a `Logs` folder next to `ViLogger.exe` (or `Documents\ViLogger\Logs` if the
+> By default, logs are saved to a `Logs` folder next to `ARVSerialTool.exe` (or `Documents\ARVSerialTool\Logs` if the
 > app folder is read-only, such as `C:\Program Files` or a shared network drive). You can change the log
 > directory at any time in the toolbar.
 
@@ -61,6 +62,20 @@ Click **? Help** in the app for a full description of every button.
 | **Line ending** | Appends None / CR / LF / CRLF — **ASCII mode only**; in HEX mode add `0D 0A` yourself |
 
 Sent data is echoed in the monitor as `TX>> ...` (it is not written to the log file).
+
+### Sending a file
+
+Click **File** on the TX bar to open the File Transmit Panel for that port:
+
+1. Click **Browse...** and pick any file (`.bin`, `.txt`, `.log`, `.hex`, `.csv`, etc.).
+2. Choose **Mode**:
+   - **Raw** — streams the file's exact bytes unmodified in chunks (`1–4096 B`, default `256 B`).
+   - **Text** — streams line-by-line preserving all bytes verbatim (including `0x80–0xFF`), with **EOL** conversion (`AsIs`, `CRLF`, `LF`, `CR`) and optional per-line delay.
+   - **Hex** — parses text hex files (`48 65 6C`, `0x48, 0x65`, or Hex `.log` captures with `#` / `//` comments), validates the entire file before sending any byte, and transmits the decoded bytes in chunks.
+3. Optionally set **Delay (ms)** (`0–60000`) to pause between chunks (Raw/Hex) or between lines (Text).
+4. Click **➤ Send File**. Live progress is shown next to the file name and can be aborted anytime with **■ Stop** (or automatically if the port disconnects).
+
+Start, completion, cancellation, and error notices are shown in the terminal monitor while RX reception and logging continue uninterrupted.
 
 ### Log files
 
@@ -107,7 +122,7 @@ cd ViLogger
 dotnet build EverLogger.sln -c Release
 dotnet run --project src/EverLogger.App -c Release
 
-# Create the portable single-file exe -> publish\ViLogger.exe
+# Create the portable single-file exe -> publish\ARVSerialTool.exe
 dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
 ```
 
@@ -116,19 +131,19 @@ dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --
 | Path | Description |
 |---|---|
 | `src/EverLogger.App` | WPF user interface (MVVM) |
-| `src/EverLogger.Core` | Serial port handling, data queues and log writers |
+| `src/EverLogger.Core` | Serial port handling, file transmitter, data queues and log writers |
 | `src/EverLogger.App/Resources/app.ico` | Application icon |
 | `tools/make_icon.ps1` | Script that regenerates the icon (`pwsh tools/make_icon.ps1 -OutIco src/EverLogger.App/Resources/app.ico -PreviewPng docs/icon.png`) |
 | `docs/` | README images and [LIMITS.md](docs/LIMITS.md) (detailed limits) |
 
 ### Releasing
 
-Push a version tag and GitHub Actions builds `ViLogger.exe` and creates the release automatically,
+Push a version tag and GitHub Actions builds `ARVSerialTool.exe` and creates the release automatically,
 using the matching `## vX.Y.Z` section of `RELEASE_NOTES.md` as the description:
 
 ```powershell
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 ## Contributing
@@ -138,6 +153,6 @@ and include your Windows version, the USB-serial adapter you use and steps to re
 
 ## License
 
-ViLogger is released under the [MIT License](LICENSE).
+ARVSerialTool is released under the [MIT License](LICENSE).
 It uses [RJCP.SerialPortStream](https://github.com/jcurl/SerialPortLib2) (MS-PL) and the .NET runtime (MIT) —
 see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

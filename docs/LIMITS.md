@@ -1,6 +1,6 @@
-# ViLogger — Limits & Pitfalls
+# ARVSerialTool — Limits & Pitfalls
 
-Applies to **ViLogger v1.1.2** and later. Numbers assume **8N1** framing (10 bits per byte), so
+Applies to **ARVSerialTool v1.2.0** and later *(formerly ViLogger)*. Numbers assume **8N1** framing (10 bits per byte), so
 **bytes/s ≈ baud ÷ 10** — e.g. 115200 baud ≈ 11.5 KB/s, 921600 baud ≈ 92 KB/s.
 
 > [!IMPORTANT]
@@ -23,7 +23,7 @@ flowchart LR
     H --> I["Terminal (max 120,000 chars)"]
 ```
 
-The log path and the display path are independent: a slow or paused terminal never affects the log.
+The log path and the display path are independent: a slow or paused terminal never affects the log. Transmit (manual TX and background File TX) writes directly to the serial stream under a dedicated write lock, so streaming a file never blocks the receive or log threads.
 
 ---
 
@@ -40,7 +40,8 @@ The log path and the display path are independent: a slow or paused terminal nev
 | Log flush | every **500 ms** (64 KB file buffer) | Data at risk if the app is killed / PC loses power |
 | Terminal text | **120,000 chars**, trimmed to 80,000 | See §4 — only seconds of data at high baud |
 | UI refresh | every **50 ms** (20×/s) | Counters and terminal update rate |
-| TX write timeout | **500 ms**, 4 KB TX buffer | Large sends at low baud fail (§6) |
+| TX write timeout | **500 ms**, 4 KB TX buffer | Manual single TX > ~4.5 KB at 9600 fails (§6); File TX slices to ~200 ms writes |
+| File TX chunk / delay | Chunk **1 – 4096 B**, Delay **0 – 60,000 ms** | Paces Raw/Hex chunks or Text lines (§6) |
 | Timestamps | **None** (view or log) | Not usable for timing analysis (§7) |
 | Log rotation | **None** | One file per session, grows without limit (§3) |
 
@@ -55,7 +56,7 @@ The log path and the display path are independent: a slow or paused terminal nev
   only the extension differs. Nothing is added (no timestamps, no TX, no system messages).
 - **Hex (`.log`)** = every byte as 2 uppercase hex digits, space separated, **exactly 16 bytes per line**
   (independent of how the driver split the data). The file is **3× the data size**.
-- Closing ViLogger normally waits until all queued data is on disk.
+- Closing ARVSerialTool normally waits until all queued data is on disk.
 
 ### Limits and pitfalls
 | Situation | What happens | How to avoid |
@@ -65,7 +66,7 @@ The log path and the display path are independent: a slow or paused terminal nev
 | Device unplugged / port error | Logging **stops automatically**. Data still inside the adapter/driver is lost. Reconnect is manual, so there is a **gap**. Pressing Log again starts a **new file**. | Check for the HARDWARE REMOVED badge / `[--- … Disconnected ---]` line before trusting a long log. |
 | Very long runs | No rotation — the file just grows. **FAT32 USB sticks stop at 4 GB:** at 921600 baud continuous that is ~13 h (Binary/ASCII) or **~4.3 h (Hex)**. | Log to an NTFS drive; prefer Binary/ASCII for long captures. |
 | Slow disk (network share, slow USB stick) | Data waits in RAM (no loss), memory use grows. If the drive disappears, the write fails → logging stops with `Log error: …`. | Log to a local disk. |
-| Disk full / no permission | Logging stops (or refuses to start) and shows `Log error: …` in the status bar and terminal. | Watch the status bar; if the app folder is read-only, ViLogger defaults to `Documents\ViLogger\Logs`. |
+| Disk full / no permission | Logging stops (or refuses to start) and shows `Log error: …` in the status bar and terminal. | Watch the status bar; if the app folder is read-only, ARVSerialTool defaults to `Documents\ARVSerialTool\Logs`. |
 
 ### File naming
 Date/time tokens use your PC's **local time**. Characters that are not allowed in file names are replaced with `_`.
@@ -114,7 +115,7 @@ still trimmed — when you turn AutoScroll back ON, anything older than the wind
 
 | Pitfall | Effect |
 |---|---|
-| Wrong baud / parity / data bits | You get garbage or nothing — **no warning**. Parity, framing, overrun and break errors are **not reported** by ViLogger. |
+| Wrong baud / parity / data bits | You get garbage or nothing — **no warning**. Parity, framing, overrun and break errors are **not reported** by ARVSerialTool. |
 | **XOn/XOff handshake** with binary data | Bytes `0x11` and `0x13` are treated as flow control by the driver → binary data is corrupted. Use XOn/XOff only for text protocols. |
 | RTS/CTS handshake with the CTS line not wired | Receive works, but TX blocks and fails after 500 ms (`Tx Error: …`). |
 | Port already open in another program | Connect fails (Windows allows only one owner per COM port). |
@@ -129,15 +130,17 @@ still trimmed — when you turn AutoScroll back ON, anything older than the wind
 | ASCII mode encoding | **7-bit ASCII only.** Any non-ASCII character (Vietnamese letters, `°`, `©`, smart quotes…) is sent as `?` (`0x3F`). Use HEX mode to send such bytes. |
 | Line ending | Appended **only in ASCII mode**. In HEX mode exactly the typed bytes are sent — add `0D 0A` yourself. |
 | HEX input | Must have an even number of digits; otherwise nothing is sent and the status bar shows an error. |
-| Size / timeout | 4 KB TX buffer + 500 ms timeout ⇒ roughly **≤ 4.5 KB per send at 9600 baud**, ≤ ~10 KB at 115200. Larger sends fail with `Tx Error`. |
-| Logging | TX data is **never written to the log**; it only appears in the terminal as `TX>> …`. |
+| Size / timeout (manual TX bar) | 4 KB TX buffer + 500 ms timeout ⇒ roughly **≤ 4.5 KB per manual send at 9600 baud**, ≤ ~10 KB at 115200. Larger single-shot TX sends fail with `Tx Error`. |
+| File Transmit (`Send File`) | Streams files via 64 KB reads and automatically sub-slices each write to `~200 ms` worth of bytes at the active baud rate (`1 – 4096 B`) so arbitrarily large files succeed even at slow baud rates. |
+| File TX modes | **Raw** sends exact bytes unchanged; **Text** preserves bytes `0x80–0xFF` verbatim with optional `AsIs`/`CRLF`/`LF`/`CR` line endings and per-line delay; **Hex** validates the entire file in Pass 1 (rejecting Intel HEX `:`, Motorola S-Records, odd nibbles, or invalid tokens before writing byte 0) then sends decoded bytes in Pass 2. |
+| Logging | TX data (manual and file) is **never written to the log**; manual TX echoes `TX>> …`, while File TX logs concise start/complete/cancel/error notices only. |
 | TX failure | Does not close the port or stop logging of received data. |
 
 ---
 
 ## 7. Timing
 
-- **No timestamps** are stored in the log or shown in the view. ViLogger cannot tell *when* a byte arrived,
+- **No timestamps** are stored in the log or shown in the view. ARVSerialTool cannot tell *when* a byte arrived,
   inter-byte gaps, or response latency.
 - Received data arrives in **driver chunks**: USB-serial adapters batch bytes (FTDI's default latency
   timer is 16 ms; CP210x/CH340 behave similarly). Even the order of chunks between **different ports** is

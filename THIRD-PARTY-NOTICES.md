@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-ViLogger is licensed under the [MIT License](LICENSE). The released `ViLogger.exe`
+ARVSerialTool is licensed under the [MIT License](LICENSE). The released `ARVSerialTool.exe`
 bundles the following third-party components, which remain under their own licenses.
 
 ## RJCP.SerialPortStream and its RJCP.* dependencies
