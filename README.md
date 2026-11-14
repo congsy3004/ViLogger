@@ -118,8 +118,9 @@ Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on W
 git clone https://github.com/congsy3004/ViLogger.git
 cd ViLogger
 
-# Build and run
+# Build, test, and run
 dotnet build EverLogger.sln -c Release
+dotnet test EverLogger.sln -c Release
 dotnet run --project src/EverLogger.App -c Release
 
 # Create the portable single-file exe -> publish\ARVSerialTool.exe
@@ -132,9 +133,11 @@ dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --
 |---|---|
 | `src/EverLogger.App` | WPF user interface (MVVM) |
 | `src/EverLogger.Core` | Serial port handling, file transmitter, data queues and log writers |
+| `tests/EverLogger.Tests` | Cross-platform Core + Windows WPF xUnit test suite |
 | `src/EverLogger.App/Resources/app.ico` | Application icon |
 | `tools/make_icon.ps1` | Script that regenerates the icon (`pwsh tools/make_icon.ps1 -OutIco src/EverLogger.App/Resources/app.ico -PreviewPng docs/icon.png`) |
-| `docs/` | README images and [LIMITS.md](docs/LIMITS.md) (detailed limits) |
+| `tools/sync_latest_exe.ps1` | Windows sync script that pulls the latest released (or CI branch) `ARVSerialTool.exe` to any local PC |
+| `docs/` | README images, [LIMITS.md](docs/LIMITS.md), and [REMOTE_AGENT_WORKFLOW.md](docs/REMOTE_AGENT_WORKFLOW.md) |
 
 ### Releasing
 
