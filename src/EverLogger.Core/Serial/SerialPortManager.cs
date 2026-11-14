@@ -137,6 +137,25 @@ public class SerialPortManager : IDisposable
     }
 
     /// <summary>
+    /// Writes a slice of data bytes to a specific port.
+    /// </summary>
+    /// <param name="portName">The port to write to.</param>
+    /// <param name="data">The source byte array.</param>
+    /// <param name="offset">The zero-based byte offset in <paramref name="data"/>.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    public void WriteToPort(string portName, byte[] data, int offset, int count)
+    {
+        if (_connections.TryGetValue(portName, out var connection))
+        {
+            connection.Write(data, offset, count);
+        }
+        else
+        {
+            throw new InvalidOperationException($"Port {portName} is not configured.");
+        }
+    }
+
+    /// <summary>
     /// Retrieves an array of available COM port names on the system.
     /// </summary>
     /// <returns>An array of COM port names.</returns>

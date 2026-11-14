@@ -20,6 +20,7 @@ public class SerialPortConnection : IDisposable
     private volatile bool _running;
     private volatile bool _closeRequested;
     private readonly byte[] _buffer = new byte[8192];
+    private readonly object _writeLock = new();
     private bool _disposed;
 
     /// <summary>
@@ -171,11 +172,36 @@ public class SerialPortConnection : IDisposable
     /// </remarks>
     public void Write(byte[] data)
     {
-        var port = _port;
-        if (port == null || !port.IsOpen)
-            throw new InvalidOperationException($"Port {Config.PortName} is not open.");
+        ArgumentNullException.ThrowIfNull(data);
+        Write(data, 0, data.Length);
+    }
 
-        port.Write(data, 0, data.Length);
+    /// <summary>
+    /// Writes a slice of bytes to the serial port in a thread-safe manner.
+    /// </summary>
+    /// <param name="data">The source byte array.</param>
+    /// <param name="offset">The zero-based byte offset in <paramref name="data"/>.</param>
+    /// <param name="count">The number of bytes to write.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the port is not open.</exception>
+    /// <exception cref="TimeoutException">The write did not complete within the write timeout.</exception>
+    /// <exception cref="IOException">The write failed.</exception>
+    public void Write(byte[] data, int offset, int count)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if ((uint)offset > (uint)data.Length || (uint)count > (uint)(data.Length - offset))
+            throw new ArgumentOutOfRangeException(nameof(count));
+
+        lock (_writeLock)
+        {
+            var port = _port;
+            if (port == null || !port.IsOpen)
+                throw new InvalidOperationException($"Port {Config.PortName} is not open.");
+
+            if (count > 0)
+            {
+                port.Write(data, offset, count);
+            }
+        }
     }
 
     /// <summary>
