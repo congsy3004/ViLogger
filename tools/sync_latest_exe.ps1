@@ -133,11 +133,10 @@ if ($RegisterTask) {
     }
     $taskArgs = "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -InstallDir `"$InstallDir`" -Repo `"$Repo`""
     $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $taskArgs
-    $triggerLogon = New-ScheduledTaskTrigger -AtLogOn
     $triggerInterval = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger @($triggerLogon, $triggerInterval) -Settings $settings -Force | Out-Null
-    Write-Host "Registered scheduled task '$TaskName' (at logon and every $IntervalMinutes min -> $InstallDir)."
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $triggerInterval -Settings $settings -Force | Out-Null
+    Write-Host "Registered scheduled task '$TaskName' (every $IntervalMinutes min -> $InstallDir)."
 }
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

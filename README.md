@@ -136,7 +136,7 @@ dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --
 | `tests/EverLogger.Tests` | Cross-platform Core + Windows WPF xUnit test suite |
 | `src/EverLogger.App/Resources/app.ico` | Application icon |
 | `tools/make_icon.ps1` | Script that regenerates the icon (`pwsh tools/make_icon.ps1 -OutIco src/EverLogger.App/Resources/app.ico -PreviewPng docs/icon.png`) |
-| `tools/sync_latest_exe.ps1` | Windows sync script that pulls the latest released (or CI branch) `ARVSerialTool.exe` to any local PC |
+| `tools/sync_latest_exe.ps1` | Windows sync script (plus double-clickable `.bat` helpers: `setup_autosync.bat`, `update_and_launch.bat`, `start_remote_agent.bat`) |
 | `docs/` | README images, [LIMITS.md](docs/LIMITS.md), and [REMOTE_AGENT_WORKFLOW.md](docs/REMOTE_AGENT_WORKFLOW.md) |
 
 ### Releasing

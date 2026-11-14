@@ -24,7 +24,7 @@ Run both commands after every code change:
 - Preserve existing indentation (4 spaces in C#/XAML, 2 spaces in `.csproj`/YAML).
 - Do not modify unrelated code or comments.
 - Write all code comments and documentation in **English only**.
-- Preserve exact original file encoding (**UTF-8 without BOM**) and line endings (`CRLF` for `.cs` / `.xaml` / `RELEASE_NOTES.md`; `LF` for `.csproj` / `.props` / `.sln` / `.yml` / `.ps1` / `.md`).
+- Preserve exact original file encoding (**UTF-8 without BOM**) and line endings (`CRLF` for `.cs` / `.xaml` / `.bat` / `RELEASE_NOTES.md`; `LF` for `.csproj` / `.props` / `.sln` / `.yml` / `.ps1` / `.md`).
 - Follow **Conventional Commits v1.0.0** (`feat(...)`, `fix(...)`, `ci(...)`, `docs(...)`, `chore(release): release vX.Y.Z`).
 
 ## Release Checklist (`vX.Y.Z`)
