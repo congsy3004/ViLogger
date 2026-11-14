@@ -3,7 +3,6 @@
 # ARVSerialTool
 
 [![Build](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml/badge.svg)](https://github.com/congsy3004/ViLogger/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/congsy3004/ViLogger)](https://github.com/congsy3004/ViLogger/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **ARVSerialTool** *(formerly ViLogger)* is a fast, portable serial port (UART / COM) monitor, file transmitter, and data logger for Windows.
@@ -24,17 +23,13 @@ Watch up to 4 ports side by side, send commands or files, and record the raw rec
 - **High performance** — dedicated receive thread per port, background log writer, terminal refreshed every 50 ms regardless of traffic.
 - **Single portable `.exe`** — the .NET runtime is bundled, nothing to install.
 
-## Download
+## Getting the executable
 
-1. Go to the [**Releases**](https://github.com/congsy3004/ViLogger/releases/latest) page.
-2. Download **`ARVSerialTool.exe`** (or the `.zip`).
-3. Put it in a folder you can write to (e.g. `Documents\ARVSerialTool`) and run it.
+This repository stores **source code only** — build the portable single-file executable locally on any Windows 10/11 (64-bit) PC with [Git for Windows](https://git-scm.com/download/win) and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0):
 
-**Requirements:** Windows 10 or 11, 64-bit.
-
-> [!NOTE]
-> The executable is not code-signed, so Windows SmartScreen may show *"Windows protected your PC"*.
-> Click **More info → Run anyway**.
+1. Clone once: `git clone https://github.com/congsy3004/ViLogger.git ARVSerialTool`
+2. Double-click **`update_and_build.bat`** in the repo folder.
+   - Pulls the latest commits from `main`, skips building if already up to date, or publishes a fresh portable **`dist\ARVSerialTool.exe`** and shows its path.
 
 > [!TIP]
 > By default, logs are saved to a `Logs` folder next to `ARVSerialTool.exe` (or `Documents\ARVSerialTool\Logs` if the
@@ -136,18 +131,12 @@ dotnet publish src\EverLogger.App\EverLogger.App.csproj -c Release -r win-x64 --
 | `tests/EverLogger.Tests` | Cross-platform Core + Windows WPF xUnit test suite |
 | `src/EverLogger.App/Resources/app.ico` | Application icon |
 | `tools/make_icon.ps1` | Script that regenerates the icon (`pwsh tools/make_icon.ps1 -OutIco src/EverLogger.App/Resources/app.ico -PreviewPng docs/icon.png`) |
-| `tools/sync_latest_exe.ps1` | Windows sync script that pulls the latest released (or CI branch) `ARVSerialTool.exe` to any local PC |
+| `update_and_build.bat` | Double-click on Windows to pull latest `main` commits and publish `dist\ARVSerialTool.exe` |
 | `docs/` | README images, [LIMITS.md](docs/LIMITS.md), and [REMOTE_AGENT_WORKFLOW.md](docs/REMOTE_AGENT_WORKFLOW.md) |
 
-### Releasing
+### Updating & Remote Agent workflow
 
-Push a version tag and GitHub Actions builds `ARVSerialTool.exe` and creates the release automatically,
-using the matching `## vX.Y.Z` section of `RELEASE_NOTES.md` as the description:
-
-```powershell
-git tag v1.2.0
-git push origin v1.2.0
-```
+To develop from anywhere using Antigravity Remote Agents and rebuild `dist\ARVSerialTool.exe` locally in one click via `update_and_build.bat`, see [docs/REMOTE_AGENT_WORKFLOW.md](docs/REMOTE_AGENT_WORKFLOW.md).
 
 ## Contributing
 

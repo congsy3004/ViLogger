@@ -2,11 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ '**' ]
-    tags-ignore: [ 'v*' ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -22,20 +20,5 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Test
+      - name: Build and Test
         run: dotnet test EverLogger.sln -c Release
-
-      - name: Publish single-file exe
-        shell: pwsh
-        run: |
-          dotnet publish src/EverLogger.App/EverLogger.App.csproj `
-            -c Release -r win-x64 --self-contained true `
-            -p:PublishSingleFile=true `
-            -o publish
-
-      - name: Upload portable exe artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ARVSerialTool-win-x64
-          path: publish/ARVSerialTool.exe
-          retention-days: 14
