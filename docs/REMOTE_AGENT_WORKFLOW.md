@@ -33,19 +33,14 @@ From now on, Antigravity will automatically clone this repository into a fresh c
 
 Choose whichever setup matches the machine where you want `ARVSerialTool.exe` to appear:
 
-#### Easiest: Double-Click Setup *(No manual terminal commands needed)*
-- **Inside this repo:** double-click [`tools/setup_autosync.bat`](../tools/setup_autosync.bat) once in File Explorer.
-  - Registers a background Windows Scheduled Task (`ARVSerialTool-AutoSync`) checking every 15 minutes and immediately downloads/verifies `dist\ARVSerialTool.exe`.
-  - Later, double-click [`tools/update_and_launch.bat`](../tools/update_and_launch.bat) anytime to check for updates and launch the app immediately.
-- **On any other Windows PC (no Git or `.NET` required):** create a folder like `C:\Tools\ARVSerialTool\`, copy **only** `setup_autosync.bat` *(and optionally `update_and_launch.bat`)* into it, and double-click `setup_autosync.bat` — it automatically fetches `sync_latest_exe.ps1` on first run and downloads `ARVSerialTool.exe` alongside it *(preserving `Logs\`)*.
-
-#### Option A: Standalone Folder via PowerShell *(Advanced / custom flags)*
-1. Create a folder on that PC, e.g. `C:\Tools\ARVSerialTool\`, and copy [`tools/sync_latest_exe.ps1`](../tools/sync_latest_exe.ps1) into it.
-2. Run once to download the current release right into that folder:
+#### Option A: Any Windows PC — Standalone Portable Folder *(No Git or .NET SDK required)*
+1. Create a folder on that PC, e.g. `C:\Tools\ARVSerialTool\`.
+2. Copy [`tools/sync_latest_exe.ps1`](../tools/sync_latest_exe.ps1) into that folder (or download it directly from GitHub).
+3. Run once to download the current release right into that folder:
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\sync_latest_exe.ps1
    ```
-3. *(Optional — Hands-Free Auto-Sync)* Register the 15-minute background task:
+4. *(Optional — Hands-Free Auto-Sync)* Register a background Windows Scheduled Task that checks GitHub Releases every 15 minutes and updates `ARVSerialTool.exe` automatically whenever you are not using it:
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\sync_latest_exe.ps1 -RegisterTask
    ```
@@ -64,7 +59,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\sync_latest_exe.ps1
 
 ### Stage 1 — Start a Remote Agent Task (From Phone, Web, or Another PC)
 
-Open **Antigravity** on any device (web, desktop, or double-click [`tools/start_remote_agent.bat`](../tools/start_remote_agent.bat) to launch `agy --remote-agent --project "ARVSerialTool"` in a terminal), choose your connected **Remote Project**, and send your request.
+Open **Antigravity** on any device, choose your connected **Remote Project**, and send your request.
 
 - **Pattern A — Test a Preview Build First *(Recommended for UI / Hardware changes)*:**
   > *"Create a feature branch `feat/<name>`, implement `<describe feature>`, add xUnit tests in `tests/EverLogger.Tests`, verify `dotnet test EverLogger.sln -c Release` passes, commit using Conventional Commits, and push the branch to `origin` (do not tag a release yet)."*
@@ -118,14 +113,6 @@ When you are happy with the feature (or if you used Pattern B directly):
 ---
 
 ## Part 3: Reference & Edge Cases
-
-### Clickable `.bat` Launchers (`tools/`)
-
-| File | What double-clicking does |
-|---|---|
-| [`tools/setup_autosync.bat`](../tools/setup_autosync.bat) | Registers the 15-minute `ARVSerialTool-AutoSync` background task and downloads the latest `ARVSerialTool.exe` (self-bootstraps `sync_latest_exe.ps1` if copied alone to another PC) |
-| [`tools/update_and_launch.bat`](../tools/update_and_launch.bat) | Checks GitHub Releases, updates `ARVSerialTool.exe` if newer, and launches it immediately |
-| [`tools/start_remote_agent.bat`](../tools/start_remote_agent.bat) | Opens an `agy` CLI session connected to Remote Project `ARVSerialTool` (`--remote-agent --project "ARVSerialTool"`) |
 
 ### `tools/sync_latest_exe.ps1` Parameters
 
