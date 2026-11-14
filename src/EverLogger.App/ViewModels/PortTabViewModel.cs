@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using EverLogger.App.Helpers;
@@ -42,6 +45,7 @@ public class PortTabViewModel : ViewModelBase
     private readonly Action<PortTabViewModel> _connectAction;
     private readonly Action<PortTabViewModel> _disconnectAction;
     private readonly Action<PortTabViewModel, byte[]> _sendAction;
+    private readonly Action<PortTabViewModel, byte[], int, int> _sendSliceAction;
     private readonly Action<PortTabViewModel> _removeAction;
     private readonly Func<bool> _canRemoveFunc;
     private readonly Func<string> _getLogDirectory;
@@ -54,6 +58,21 @@ public class PortTabViewModel : ViewModelBase
     private string _selectedLineEnding = "CRLF";
     private string _txMode = "ASCII";
     private long _bytesSent;
+
+    // File Tx state
+    private bool _isFilePanelOpen;
+    private string _selectedFilePath = string.Empty;
+    private FileSendMode _selectedFileSendMode = FileSendMode.Raw;
+    private FileLineEnding _selectedFileLineEnding = FileLineEnding.AsIs;
+    private string _fileChunkSizeText = "256";
+    private string _fileDelayMsText = "0";
+    private bool _isSendingFile;
+    private double _fileSendProgressPercent;
+    private string _fileSendProgressText = string.Empty;
+    private long _pendingTxBytes;
+    private long _fileProgressCurrent;
+    private long _fileProgressTotal;
+    private CancellationTokenSource? _fileSendCts;
 
     // Shared collections from MainViewModel
     public ObservableCollection<PortInfo> AvailablePorts { get; }
@@ -70,12 +89,26 @@ public class PortTabViewModel : ViewModelBase
         Func<string> getLogDirectory,
         Func<string> getLogFileTemplate,
         Func<PortTabViewModel, string, bool>? canUsePort = null,
-        Action<string>? reportStatus = null)
+        Action<string>? reportStatus = null,
+        Action<PortTabViewModel, byte[], int, int>? sendSliceAction = null)
     {
         _config = new SerialPortConfig();
         _connectAction = connectAction;
         _disconnectAction = disconnectAction;
         _sendAction = sendAction;
+        _sendSliceAction = sendSliceAction ?? ((tab, buf, off, cnt) =>
+        {
+            if (off == 0 && cnt == buf.Length)
+            {
+                sendAction(tab, buf);
+            }
+            else
+            {
+                byte[] copy = new byte[cnt];
+                Buffer.BlockCopy(buf, off, copy, 0, cnt);
+                sendAction(tab, copy);
+            }
+        });
         _removeAction = removeAction;
         _canRemoveFunc = canRemove;
         _getLogDirectory = getLogDirectory;
@@ -107,8 +140,12 @@ public class PortTabViewModel : ViewModelBase
         ToggleAutoScrollCommand = new RelayCommand(() => AutoScroll = !AutoScroll);
         RemoveThisPortCommand = new RelayCommand(() => _removeAction(this), _canRemoveFunc);
 
-        // Tx command
-        SendCommand = new RelayCommand(Send, () => IsConnected && !string.IsNullOrEmpty(TxInput));
+        // Tx commands
+        SendCommand = new RelayCommand(Send, () => IsConnected && !IsSendingFile && !string.IsNullOrEmpty(TxInput));
+        ToggleFilePanelCommand = new RelayCommand(() => IsFilePanelOpen = !IsFilePanelOpen);
+        BrowseSendFileCommand = new RelayCommand(BrowseSendFile, () => !IsSendingFile);
+        SendFileCommand = new RelayCommand(() => _ = SendFileCoreAsync(), CanSendFile);
+        CancelFileSendCommand = new RelayCommand(CancelFileSend, () => IsSendingFile);
     }
 
     // ───────────────── Config State ─────────────────
@@ -299,6 +336,11 @@ public class PortTabViewModel : ViewModelBase
                 ((RelayCommand)ToggleConnectCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)ResetConfigCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)SendFileCommand).RaiseCanExecuteChanged();
+                if (!value)
+                {
+                    CancelFileSend();
+                }
             }
         }
     }
@@ -394,6 +436,10 @@ public class PortTabViewModel : ViewModelBase
     public ICommand OpenLogFileCommand { get; }
     public ICommand ToggleAutoScrollCommand { get; }
     public ICommand SendCommand { get; }
+    public ICommand ToggleFilePanelCommand { get; }
+    public ICommand BrowseSendFileCommand { get; }
+    public ICommand SendFileCommand { get; }
+    public ICommand CancelFileSendCommand { get; }
     public ICommand RemoveThisPortCommand { get; }
 
 
@@ -513,6 +559,163 @@ public class PortTabViewModel : ViewModelBase
     {
         get => _bytesSent;
         set => SetProperty(ref _bytesSent, value);
+    }
+
+    // ───────────────── File Tx Properties ─────────────────
+
+    public FileSendMode[] FileSendModeOptions { get; } = Enum.GetValues<FileSendMode>();
+    public FileLineEnding[] FileLineEndingOptions { get; } = Enum.GetValues<FileLineEnding>();
+
+    public bool IsFilePanelOpen
+    {
+        get => _isFilePanelOpen;
+        set
+        {
+            if (SetProperty(ref _isFilePanelOpen, value))
+            {
+                OnPropertyChanged(nameof(IsFilePanelVisible));
+            }
+        }
+    }
+
+    public bool IsFilePanelVisible => _isFilePanelOpen || _isSendingFile;
+
+    public string SelectedFilePath
+    {
+        get => _selectedFilePath;
+        set
+        {
+            if (SetProperty(ref _selectedFilePath, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(SelectedFileDisplay));
+                ((RelayCommand)SendFileCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string SelectedFileDisplay
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_selectedFilePath))
+                return "No file selected";
+
+            string name = Path.GetFileName(_selectedFilePath);
+            try
+            {
+                if (File.Exists(_selectedFilePath))
+                {
+                    long len = new FileInfo(_selectedFilePath).Length;
+                    return $"{name} ({FormatByteSize(len)})";
+                }
+            }
+            catch
+            {
+            }
+
+            return $"{name} (not found)";
+        }
+    }
+
+    public FileSendMode SelectedFileSendMode
+    {
+        get => _selectedFileSendMode;
+        set
+        {
+            if (SetProperty(ref _selectedFileSendMode, value))
+            {
+                OnPropertyChanged(nameof(IsFileTextMode));
+                OnPropertyChanged(nameof(IsFileChunkMode));
+                ((RelayCommand)SendFileCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsFileTextMode => _selectedFileSendMode == FileSendMode.Text;
+    public bool IsFileChunkMode => _selectedFileSendMode != FileSendMode.Text;
+
+    public FileLineEnding SelectedFileLineEnding
+    {
+        get => _selectedFileLineEnding;
+        set => SetProperty(ref _selectedFileLineEnding, value);
+    }
+
+    public string FileChunkSizeText
+    {
+        get => _fileChunkSizeText;
+        set
+        {
+            if (SetProperty(ref _fileChunkSizeText, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IsFileChunkSizeValid));
+                ((RelayCommand)SendFileCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string FileDelayMsText
+    {
+        get => _fileDelayMsText;
+        set
+        {
+            if (SetProperty(ref _fileDelayMsText, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IsFileDelayMsValid));
+                ((RelayCommand)SendFileCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsFileChunkSizeValid => TryParseChunkSize(_fileChunkSizeText, out _);
+    public bool IsFileDelayMsValid => TryParseDelayMs(_fileDelayMsText, out _);
+
+    public bool IsSendingFile
+    {
+        get => _isSendingFile;
+        private set
+        {
+            if (SetProperty(ref _isSendingFile, value))
+            {
+                OnPropertyChanged(nameof(IsFilePanelVisible));
+                ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)BrowseSendFileCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)SendFileCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)CancelFileSendCommand).RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public double FileSendProgressPercent
+    {
+        get => _fileSendProgressPercent;
+        private set => SetProperty(ref _fileSendProgressPercent, value);
+    }
+
+    public string FileSendProgressText
+    {
+        get => _fileSendProgressText;
+        private set => SetProperty(ref _fileSendProgressText, value);
+    }
+
+    private static bool TryParseChunkSize(string text, out int chunkSize)
+    {
+        return int.TryParse(text?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out chunkSize)
+               && chunkSize >= FileSender.MinChunkSize && chunkSize <= FileSender.MaxChunkSize;
+    }
+
+    private static bool TryParseDelayMs(string text, out int delayMs)
+    {
+        return int.TryParse(text?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out delayMs)
+               && delayMs >= FileSender.MinDelayMs && delayMs <= FileSender.MaxDelayMs;
+    }
+
+    private static string FormatByteSize(long bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} B";
+        if (bytes < 1024 * 1024)
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1} KB", bytes / 1024.0);
+        return string.Format(CultureInfo.InvariantCulture, "{0:F2} MB", bytes / (1024.0 * 1024.0));
     }
 
     // ───────────────── Config Actions ─────────────────
@@ -666,7 +869,7 @@ public class PortTabViewModel : ViewModelBase
 
     private void Send()
     {
-        if (string.IsNullOrEmpty(TxInput) || !IsConnected) return;
+        if (string.IsNullOrEmpty(TxInput) || !IsConnected || IsSendingFile) return;
 
         try
         {
@@ -727,6 +930,166 @@ public class PortTabViewModel : ViewModelBase
         return bytes;
     }
 
+    // ───────────────── File Tx (Send File) ─────────────────
+
+    private void BrowseSendFile()
+    {
+        if (IsSendingFile) return;
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = $"Select File to Send ({PortName})",
+            Filter = "All Files (*.*)|*.*|Binary Files (*.bin;*.raw;*.dat;*.fw)|*.bin;*.raw;*.dat;*.fw|Text & Hex Files (*.txt;*.log;*.hex;*.csv;*.cmd)|*.txt;*.log;*.hex;*.csv;*.cmd",
+            CheckFileExists = true
+        };
+
+        if (!string.IsNullOrWhiteSpace(_selectedFilePath))
+        {
+            try
+            {
+                string? dir = Path.GetDirectoryName(_selectedFilePath);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    dialog.InitialDirectory = dir;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        if (dialog.ShowDialog() == true)
+        {
+            SelectedFilePath = dialog.FileName;
+        }
+    }
+
+    private bool CanSendFile()
+    {
+        return IsConnected
+            && !IsSendingFile
+            && !string.IsNullOrWhiteSpace(_selectedFilePath)
+            && (!IsFileChunkMode || IsFileChunkSizeValid)
+            && IsFileDelayMsValid;
+    }
+
+    public void CancelFileSend()
+    {
+        try
+        {
+            _fileSendCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    public async Task SendFileCoreAsync()
+    {
+        if (!CanSendFile()) return;
+
+        string filePath = _selectedFilePath;
+        string fileName = Path.GetFileName(filePath);
+        OnPropertyChanged(nameof(SelectedFileDisplay));
+
+        if (!File.Exists(filePath))
+        {
+            string msg = $"File not found: {fileName}";
+            StatusText = $"Tx File Error: {msg}";
+            _reportStatus?.Invoke($"File send error ({PortName}): {msg}");
+            FileSendProgressText = "File not found";
+            AddLine($"[--- TX File error: {msg} ---]");
+            if (_autoScroll && Terminal.HasUpdate) RaiseDisplayUpdate();
+            return;
+        }
+
+        if (!TryParseChunkSize(_fileChunkSizeText, out int chunkSize))
+            chunkSize = 256;
+        if (!TryParseDelayMs(_fileDelayMsText, out int delayMs))
+            delayMs = 0;
+
+        var options = new FileSendOptions
+        {
+            FilePath = filePath,
+            Mode = _selectedFileSendMode,
+            LineEnding = _selectedFileLineEnding,
+            ChunkSize = chunkSize,
+            DelayMs = delayMs,
+            BaudRate = _config.BaudRate
+        };
+
+        var cts = new CancellationTokenSource();
+        _fileSendCts = cts;
+        long wireSent = 0;
+
+        Interlocked.Exchange(ref _fileProgressCurrent, 0);
+        Interlocked.Exchange(ref _fileProgressTotal, 0);
+        FileSendProgressPercent = 0;
+        FileSendProgressText = "Preparing...";
+        IsSendingFile = true;
+
+        AddLine($"[--- TX File start: {fileName} ({options.Mode}) ---]");
+        if (_autoScroll && Terminal.HasUpdate) RaiseDisplayUpdate();
+        _reportStatus?.Invoke($"Sending {fileName} on {PortName}...");
+
+        try
+        {
+            FileSendResult result = await FileSender.SendAsync(
+                options,
+                writeBytes: (buf, off, cnt) =>
+                {
+                    _sendSliceAction(this, buf, off, cnt);
+                    Interlocked.Add(ref _pendingTxBytes, cnt);
+                    Interlocked.Add(ref wireSent, cnt);
+                },
+                onProgress: (_, current, total) =>
+                {
+                    Interlocked.Exchange(ref _fileProgressCurrent, current);
+                    Interlocked.Exchange(ref _fileProgressTotal, total);
+                },
+                ct: cts.Token);
+
+            string elapsedText = result.Elapsed.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture);
+            FileSendProgressPercent = 100;
+            FileSendProgressText = $"Done ({FormatByteSize(result.WireBytesSent)} in {elapsedText} s)";
+            if (IsConnected) StatusText = "Connected";
+            _reportStatus?.Invoke($"Sent {fileName} ({result.WireBytesSent:N0} B) on {PortName}");
+            AddLine($"[--- TX File complete: {fileName} ({result.WireBytesSent:N0} B in {elapsedText} s) ---]");
+        }
+        catch (OperationCanceledException)
+        {
+            long sent = Interlocked.Read(ref wireSent);
+            FileSendProgressText = $"Cancelled ({FormatByteSize(sent)} sent)";
+            if (IsConnected) StatusText = "File send cancelled";
+            _reportStatus?.Invoke($"File send cancelled ({PortName}): {fileName}");
+            AddLine($"[--- TX File cancelled: {fileName} ({sent:N0} B sent) ---]");
+        }
+        catch (Exception ex)
+        {
+            FileSendProgressText = $"Error: {ex.Message}";
+            if (IsConnected) StatusText = $"Tx File Error: {ex.Message}";
+            _reportStatus?.Invoke($"File send error ({PortName}): {ex.Message}");
+            AddLine($"[--- TX File error ({fileName}): {ex.Message} ---]");
+        }
+        finally
+        {
+            long remainingTx = Interlocked.Exchange(ref _pendingTxBytes, 0);
+            if (remainingTx > 0)
+            {
+                BytesSent += remainingTx;
+            }
+
+            _fileSendCts = null;
+            cts.Dispose();
+            IsSendingFile = false;
+
+            if (_autoScroll && Terminal.HasUpdate)
+            {
+                RaiseDisplayUpdate();
+            }
+        }
+    }
+
     // ───────────────── Monitor Display ─────────────────
 
     public void AppendData(DataPacket packet)
@@ -749,6 +1112,29 @@ public class PortTabViewModel : ViewModelBase
         {
             BytesReceived += _pendingRxBytes;
             _pendingRxBytes = 0;
+        }
+
+        long pendingTx = Interlocked.Exchange(ref _pendingTxBytes, 0);
+        if (pendingTx > 0)
+        {
+            BytesSent += pendingTx;
+        }
+
+        if (_isSendingFile)
+        {
+            long cur = Interlocked.Read(ref _fileProgressCurrent);
+            long tot = Interlocked.Read(ref _fileProgressTotal);
+            if (tot > 0)
+            {
+                double pct = Math.Clamp(cur * 100.0 / tot, 0, 100);
+                FileSendProgressPercent = pct;
+                FileSendProgressText = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0} / {1} ({2:F0}%)",
+                    FormatByteSize(cur),
+                    FormatByteSize(tot),
+                    pct);
+            }
         }
 
         CheckLogWriter();
@@ -799,7 +1185,13 @@ public class PortTabViewModel : ViewModelBase
             // Count only what is written from now on.
             _logBytesSeen = writer.BytesWritten;
         }
+        Interlocked.Exchange(ref _pendingTxBytes, 0);
         BytesSent = 0;
+        if (!IsSendingFile)
+        {
+            FileSendProgressPercent = 0;
+            FileSendProgressText = string.Empty;
+        }
 
         // Empty the view immediately, even while AutoScroll is OFF (paused).
         RaiseDisplayUpdate();
@@ -810,6 +1202,7 @@ public class PortTabViewModel : ViewModelBase
     /// </summary>
     public void Cleanup()
     {
+        CancelFileSend();
         StopLogging();
         IsHardwareRemoved = false;
         if (IsConnected)

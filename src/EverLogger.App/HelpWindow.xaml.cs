@@ -13,8 +13,8 @@ public partial class HelpWindow : Window
         string? version = rawVer?.Split('+')[0];
         if (!string.IsNullOrWhiteSpace(version))
         {
-            Title = $"ViLogger v{version} — Help";
-            SubtitleText.Text = $"ViLogger v{version} — Describes every control in ViLogger";
+            Title = $"ARVSerialTool v{version} — Help";
+            SubtitleText.Text = $"ARVSerialTool v{version} — Describes every control in ARVSerialTool";
         }
     }
 

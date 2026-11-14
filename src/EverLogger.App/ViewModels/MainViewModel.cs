@@ -191,7 +191,8 @@ public class MainViewModel : ViewModelBase
             getLogFileTemplate: () => LogFileNameTemplate,
             canUsePort: (t, portName) => !Ports.Any(p =>
                 p != t && p.IsConfigured && string.Equals(p.PortName, portName, StringComparison.OrdinalIgnoreCase)),
-            reportStatus: msg => StatusBarText = msg);
+            reportStatus: msg => StatusBarText = msg,
+            sendSliceAction: (t, buf, off, cnt) => _portManager.WriteToPort(t.PortName, buf, off, cnt));
 
         tab.PropertyChanged += (s, e) =>
         {
@@ -645,7 +646,7 @@ public class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Uses a Logs folder next to ViLogger.exe when writable; falls back to Documents\ViLogger\Logs
+    /// Uses a Logs folder next to ARVSerialTool.exe when writable; falls back to Documents\ARVSerialTool\Logs
     /// when launched from a read-only location (e.g. Program Files or a shared network drive).
     /// </summary>
     private static string ResolveDefaultLogDirectory()
@@ -657,7 +658,7 @@ public class MainViewModel : ViewModelBase
         try
         {
             string probeDir = Directory.Exists(portableLogs) ? portableLogs : exeDir;
-            string probeFile = Path.Combine(probeDir, $".vilogger_write_test_{Guid.NewGuid():N}");
+            string probeFile = Path.Combine(probeDir, $".arvserialtool_write_test_{Guid.NewGuid():N}");
             using (new FileStream(probeFile, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose))
             {
             }
@@ -668,9 +669,9 @@ public class MainViewModel : ViewModelBase
             string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             if (!string.IsNullOrWhiteSpace(docs))
             {
-                return Path.Combine(docs, "ViLogger", "Logs");
+                return Path.Combine(docs, "ARVSerialTool", "Logs");
             }
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ViLogger", "Logs");
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ARVSerialTool", "Logs");
         }
     }
 

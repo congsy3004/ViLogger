@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:helpers="clr-namespace:EverLogger.App.Helpers"
-        Title="ViLogger — Serial Monitor &amp; Logger" 
+        Title="ARVSerialTool — Serial Monitor &amp; Logger" 
         Height="800" Width="1180"
         MinWidth="850" MinHeight="600"
         WindowStyle="SingleBorderWindow"
@@ -495,6 +495,30 @@
                                                   SelectedItem="{Binding TxMode}"
                                                   Width="65" Height="24" FontSize="10" Padding="3,1" Margin="4,0,4,0"/>
 
+                                        <!-- Toggle collapsible File TX bar -->
+                                        <Button DockPanel.Dock="Right"
+                                                Content="File"
+                                                Command="{Binding ToggleFilePanelCommand}"
+                                                Width="38" Height="24" FontSize="10" Padding="4,1" Margin="3,0,0,0"
+                                                ToolTip="Transmit bytes from a file">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFilePanelOpen}" Value="True">
+                                                            <Setter Property="Background" Value="#162032"/>
+                                                            <Setter Property="Foreground" Value="#539BF5"/>
+                                                            <Setter Property="BorderBrush" Value="#539BF5"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsSendingFile}" Value="True">
+                                                            <Setter Property="Background" Value="#143A2C"/>
+                                                            <Setter Property="Foreground" Value="#34D399"/>
+                                                            <Setter Property="BorderBrush" Value="#065F46"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+
                                         <Border DockPanel.Dock="Left" 
                                                 Background="#162032" 
                                                 BorderBrush="#22303E" 
@@ -515,6 +539,140 @@
                                                  VerticalContentAlignment="Center"
                                                  Padding="6,0"/>
                                     </DockPanel>
+                                </Border>
+
+                                <!-- ─── 3b. File TX Panel (collapsible) ─── -->
+                                <Border DockPanel.Dock="Bottom"
+                                        Background="#101622"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="0,1,0,0"
+                                        Padding="6,4"
+                                        Visibility="{Binding IsFilePanelVisible, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <!-- Row 1: File picker, status, and Send/Stop button -->
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Left"
+                                                    Background="#162032"
+                                                    BorderBrush="#22303E"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="5,2"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="FILE" Foreground="#539BF5" FontWeight="Bold" FontSize="10"/>
+                                            </Border>
+
+                                            <Button DockPanel.Dock="Left"
+                                                    Content="Browse..."
+                                                    Command="{Binding BrowseSendFileCommand}"
+                                                    Height="24" FontSize="10" Padding="8,1" Margin="0,0,6,0"/>
+
+                                            <Button DockPanel.Dock="Right"
+                                                    Content="■ Stop"
+                                                    Command="{Binding CancelFileSendCommand}"
+                                                    Style="{StaticResource DangerButton}"
+                                                    Height="24" FontSize="10" Padding="8,1" Margin="4,0,0,0"
+                                                    Visibility="{Binding IsSendingFile, Converter={StaticResource BoolToVis}}"/>
+
+                                            <Button DockPanel.Dock="Right"
+                                                    Content="➤ Send File"
+                                                    Command="{Binding SendFileCommand}"
+                                                    Style="{StaticResource AccentButton}"
+                                                    Height="24" FontSize="10" Padding="9,1" Margin="4,0,0,0"
+                                                    Visibility="{Binding IsSendingFile, Converter={StaticResource InvBoolToVis}}"/>
+
+                                            <TextBlock DockPanel.Dock="Right"
+                                                       Text="{Binding FileSendProgressText}"
+                                                       Foreground="{StaticResource MutedForegroundBrush}"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center"
+                                                       Margin="6,0,2,0"/>
+
+                                            <TextBlock Text="{Binding SelectedFileDisplay}"
+                                                       ToolTip="{Binding SelectedFilePath}"
+                                                       Foreground="{StaticResource PrimaryForegroundBrush}"
+                                                       FontSize="10"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                        </DockPanel>
+
+                                        <!-- Thin progress bar during file transfer -->
+                                        <ProgressBar Minimum="0"
+                                                     Maximum="100"
+                                                     Value="{Binding FileSendProgressPercent, Mode=OneWay}"
+                                                     Height="3"
+                                                     Margin="0,4,0,0"
+                                                     Background="#1C2333"
+                                                     Foreground="{StaticResource AccentBrush}"
+                                                     BorderThickness="0"
+                                                     Visibility="{Binding IsSendingFile, Converter={StaticResource BoolToVis}}"/>
+
+                                        <!-- Row 2: Mode, EOL, Chunk size, Delay -->
+                                        <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <WrapPanel.Style>
+                                                <Style TargetType="WrapPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSendingFile}" Value="True">
+                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                            <Setter Property="Opacity" Value="0.5"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </WrapPanel.Style>
+
+                                            <TextBlock Text="Mode:" Foreground="{StaticResource MutedForegroundBrush}" VerticalAlignment="Center" FontSize="10" Margin="0,0,3,0"/>
+                                            <ComboBox ItemsSource="{Binding FileSendModeOptions}"
+                                                      SelectedItem="{Binding SelectedFileSendMode}"
+                                                      Width="66" Height="22" FontSize="10" Padding="4,1" Margin="0,0,8,0"/>
+
+                                            <StackPanel Orientation="Horizontal"
+                                                        Margin="0,0,8,0"
+                                                        Visibility="{Binding IsFileTextMode, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="EOL:" Foreground="{StaticResource MutedForegroundBrush}" VerticalAlignment="Center" FontSize="10" Margin="0,0,3,0"/>
+                                                <ComboBox ItemsSource="{Binding FileLineEndingOptions}"
+                                                          SelectedItem="{Binding SelectedFileLineEnding}"
+                                                          Width="64" Height="22" FontSize="10" Padding="4,1"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal"
+                                                        Margin="0,0,8,0"
+                                                        Visibility="{Binding IsFileChunkMode, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="Chunk:" Foreground="{StaticResource MutedForegroundBrush}" VerticalAlignment="Center" FontSize="10" Margin="0,0,3,0"/>
+                                                <TextBox Text="{Binding FileChunkSizeText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="46" Height="22" FontSize="10" Padding="4,1"
+                                                         ToolTip="Bytes per chunk (1 - 4096)">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFileChunkSizeValid}" Value="False">
+                                                                    <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+                                                <TextBlock Text="B" Foreground="{StaticResource MutedForegroundBrush}" VerticalAlignment="Center" FontSize="10" Margin="2,0,0,0"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Delay:" Foreground="{StaticResource MutedForegroundBrush}" VerticalAlignment="Center" FontSize="10" Margin="0,0,3,0"/>
+                                                <TextBox Text="{Binding FileDelayMsText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Width="46" Height="22" FontSize="10" Padding="4,1"
+                                                         ToolTip="Pause between chunks/lines in milliseconds (0 - 60000)">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFileDelayMsValid}" Value="False">
+                                                                    <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+                                                <TextBlock Text="ms" Foreground="{StaticResource MutedForegroundBrush}" VerticalAlignment="Center" FontSize="10" Margin="2,0,0,0"/>
+                                            </StackPanel>
+                                        </WrapPanel>
+                                    </StackPanel>
                                 </Border>
 
                                 <!-- ─── 4. Metrics & Status Bar ─── -->
