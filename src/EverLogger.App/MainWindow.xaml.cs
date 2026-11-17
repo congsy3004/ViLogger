@@ -198,7 +198,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles Enter key in Tx input:
+    /// Handles TX box keyboard shortcuts:
+    /// - Up / Down arrows: recalls recently sent TX strings without sending them.
     /// - Plain Enter: sends the TX content immediately (same as clicking the Send button).
     /// - Ctrl+Enter: inserts CR (&lt;CR&gt; / 0D) into the input. If the last character was
     ///   already CR, inserts LF instead (&lt;LF&gt; / 0A). LF is only appended immediately
@@ -206,8 +207,37 @@ public partial class MainWindow : Window
     /// </summary>
     private void TxTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter) return;
         if (sender is not TextBox tb || tb.DataContext is not PortTabViewModel portVm) return;
+
+        if ((e.Key == Key.Up || e.Key == Key.Down) && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            bool changed = e.Key == Key.Up
+                ? portVm.NavigateTxHistoryUp()
+                : portVm.NavigateTxHistoryDown();
+
+            if (changed)
+            {
+                _updatingTxText = true;
+                try
+                {
+                    BindingOperations.GetBindingExpression(tb, TextBox.TextProperty)?.UpdateTarget();
+                    tb.CaretIndex = tb.Text.Length;
+                }
+                finally
+                {
+                    _updatingTxText = false;
+                }
+            }
+            else
+            {
+                tb.CaretIndex = tb.Text.Length;
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key != Key.Enter) return;
 
         bool ctrlHeld = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
 

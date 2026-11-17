@@ -399,5 +399,83 @@ public sealed class FileSenderAndViewModelTests : IDisposable
         vm.Terminal.TryTakeUpdate(out _, out string termText);
         Assert.Contains("TX File cancelled: vm_disconnect.bin", termText);
     }
+
+    [Fact]
+    public void PortTabViewModel_TxHistory_UpAndDownRecallsSentStringsWithoutSending()
+    {
+        var sink = new MemoryStream();
+        var statuses = new List<string>();
+        var vm = CreateMockTab(sink, statuses);
+        vm.SelectedLineEnding = "None";
+
+        // Empty history does nothing and sends 0 bytes
+        Assert.False(vm.NavigateTxHistoryUp());
+        Assert.False(vm.NavigateTxHistoryDown());
+        Assert.Equal(0, vm.BytesSent);
+
+        foreach (string cmd in new[] { "AT", "AT+CSQ", "AT+GMR", "AT" })
+        {
+            vm.TxInput = cmd;
+            vm.SendCommand.Execute(null);
+        }
+
+        long bytesAfterSends = vm.BytesSent;
+        Assert.Equal(string.Empty, vm.TxInput);
+
+        // Step backward through MRU-deduplicated history while preserving unsent draft
+        vm.TxInput = "AT+DRAFT";
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT", vm.TxInput);
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT+GMR", vm.TxInput);
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT+CSQ", vm.TxInput);
+        Assert.False(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT+CSQ", vm.TxInput);
+
+        // Recalling must not transmit anything
+        Assert.Equal(bytesAfterSends, vm.BytesSent);
+
+        // Step forward back to the unsent draft
+        Assert.True(vm.NavigateTxHistoryDown());
+        Assert.Equal("AT+GMR", vm.TxInput);
+        Assert.True(vm.NavigateTxHistoryDown());
+        Assert.Equal("AT", vm.TxInput);
+        Assert.True(vm.NavigateTxHistoryDown());
+        Assert.Equal("AT+DRAFT", vm.TxInput);
+        Assert.False(vm.NavigateTxHistoryDown());
+
+        // Editing a recalled string resets the cursor so next Up jumps to newest ("AT")
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT+GMR", vm.TxInput);
+        vm.TxInput = "MODIFIED";
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT", vm.TxInput);
+        Assert.True(vm.NavigateTxHistoryDown());
+        Assert.Equal("MODIFIED", vm.TxInput);
+
+        // Switching to HEX mode uses an independent history list
+        vm.TxInput = string.Empty;
+        vm.TxMode = "HEX";
+        Assert.False(vm.NavigateTxHistoryUp());
+
+        vm.TxInput = "AA BB";
+        vm.SendCommand.Execute(null);
+        vm.TxInput = "CC DD";
+        vm.SendCommand.Execute(null);
+
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("CC DD", vm.TxInput);
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AA BB", vm.TxInput);
+        Assert.False(vm.NavigateTxHistoryUp());
+
+        // Switching back to ASCII preserves ASCII history intact
+        vm.TxInput = string.Empty;
+        vm.TxMode = "ASCII";
+        Assert.True(vm.NavigateTxHistoryUp());
+        Assert.Equal("AT", vm.TxInput);
+    }
 #endif
 }

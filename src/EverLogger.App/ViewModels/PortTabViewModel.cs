@@ -54,10 +54,16 @@ public class PortTabViewModel : ViewModelBase
     private readonly Action<string>? _reportStatus;
 
     // Tx state
+    public const int MaxTxHistory = 50;
     private string _txInput = string.Empty;
     private string _selectedLineEnding = "CRLF";
     private string _txMode = "ASCII";
     private long _bytesSent;
+    private readonly List<string> _asciiTxHistory = new();
+    private readonly List<string> _hexTxHistory = new();
+    private int _txHistoryIndex = -1;
+    private string _txDraft = string.Empty;
+    private bool _navigatingHistory;
 
     // File Tx state
     private bool _isFilePanelOpen;
@@ -506,12 +512,17 @@ public class PortTabViewModel : ViewModelBase
                 }
             }
 
+            _txHistoryIndex = -1;
+            _txDraft = string.Empty;
+
             ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
         }
     }
 
     /// <summary>True when TxMode is "HEX".</summary>
     public bool SendAsHex => _txMode == "HEX";
+
+    private List<string> ActiveTxHistory => SendAsHex ? _hexTxHistory : _asciiTxHistory;
 
     public string TxInput
     {
@@ -544,6 +555,11 @@ public class PortTabViewModel : ViewModelBase
 
             if (SetProperty(ref _txInput, value))
             {
+                if (!_navigatingHistory)
+                {
+                    _txHistoryIndex = -1;
+                    _txDraft = string.Empty;
+                }
                 ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
             }
         }
@@ -904,11 +920,93 @@ public class PortTabViewModel : ViewModelBase
                 : TxInput;
             AddLine($"TX>> {display}");
 
+            RecordTxHistory(display);
             TxInput = string.Empty;
         }
         catch (Exception ex)
         {
             StatusText = $"Tx Error: {ex.Message}";
+        }
+    }
+
+    private void RecordTxHistory(string sentText)
+    {
+        if (string.IsNullOrEmpty(sentText)) return;
+        var history = ActiveTxHistory;
+        int existingIndex = history.IndexOf(sentText);
+        if (existingIndex >= 0)
+        {
+            history.RemoveAt(existingIndex);
+        }
+        else if (history.Count >= MaxTxHistory)
+        {
+            history.RemoveAt(0);
+        }
+        history.Add(sentText);
+        _txHistoryIndex = -1;
+        _txDraft = string.Empty;
+    }
+
+    /// <summary>
+    /// Recalls the previous (older) sent TX string into <see cref="TxInput"/> without sending it.
+    /// Returns true if <see cref="TxInput"/> was updated.
+    /// </summary>
+    public bool NavigateTxHistoryUp()
+    {
+        var history = ActiveTxHistory;
+        if (history.Count == 0) return false;
+
+        if (_txHistoryIndex == -1)
+        {
+            _txDraft = _txInput;
+            _txHistoryIndex = history.Count - 1;
+        }
+        else if (_txHistoryIndex > 0)
+        {
+            _txHistoryIndex--;
+        }
+        else
+        {
+            return false;
+        }
+
+        SetTxInputFromHistory(history[_txHistoryIndex]);
+        return true;
+    }
+
+    /// <summary>
+    /// Recalls the next (newer) sent TX string into <see cref="TxInput"/>, or restores the unsent
+    /// draft when stepping past the newest entry, without sending it.
+    /// Returns true if <see cref="TxInput"/> was updated.
+    /// </summary>
+    public bool NavigateTxHistoryDown()
+    {
+        if (_txHistoryIndex == -1) return false;
+
+        var history = ActiveTxHistory;
+        if (_txHistoryIndex < history.Count - 1)
+        {
+            _txHistoryIndex++;
+            SetTxInputFromHistory(history[_txHistoryIndex]);
+        }
+        else
+        {
+            _txHistoryIndex = -1;
+            SetTxInputFromHistory(_txDraft);
+        }
+        return true;
+    }
+
+    private void SetTxInputFromHistory(string text)
+    {
+        _navigatingHistory = true;
+        try
+        {
+            TxInput = text;
+        }
+        finally
+        {
+            _navigatingHistory = false;
         }
     }
 
