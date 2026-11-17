@@ -356,7 +356,7 @@
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="TX input box"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Type the text or hex bytes to transmit.&#10;• Enter: sends immediately.&#10;• Ctrl+Enter: inserts &lt;CR&gt; (HEX: 0D). Pressing it again right after &lt;CR&gt; inserts &lt;LF&gt; (HEX: 0A).&#10;In ASCII mode, line breaks are shown as &lt;CR&gt; / &lt;LF&gt; tokens — pasted line breaks are converted automatically and sent as real CR / LF bytes."/>
+                               Text="Type the text or hex bytes to transmit.&#10;• Up / Down arrows: recalls recently sent TX strings into the box without sending them.&#10;• Enter: sends immediately.&#10;• Ctrl+Enter: inserts &lt;CR&gt; (HEX: 0D). Pressing it again right after &lt;CR&gt; inserts &lt;LF&gt; (HEX: 0A).&#10;In ASCII mode, line breaks are shown as &lt;CR&gt; / &lt;LF&gt; tokens — pasted line breaks are converted automatically and sent as real CR / LF bytes."/>
                     <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="File"/>

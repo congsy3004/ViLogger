@@ -5,6 +5,20 @@
 
 ---
 
+## v1.2.1 — 2026-11-17
+
+**Added Up / Down arrow TX command history recall in the TX input box.**
+
+---
+
+### ✨ New
+
+- **TX Command History (`Up` / `Down` arrows):** press **Up** or **Down** in the TX input box to cycle through recently sent strings (up to 50 unique entries per port and per ASCII / HEX mode, ordered most-recent-first).
+  - Fills the TX box without transmitting so you can inspect, edit, or press **Enter** / **Send** when ready.
+  - Preserves your unsent draft text when stepping past the newest entry with **Down**.
+
+---
+
 ## v1.2.0 — 2026-11-14
 
 **Rebranded from ViLogger to ARVSerialTool, added the integrated Send File feature, and introduced the new ARVSerialTool application icon.**

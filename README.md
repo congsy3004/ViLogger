@@ -17,7 +17,7 @@ Watch up to 4 ports side by side, send commands or files, and record the raw rec
 - **Custom port names** — label each port ("GPS", "Debug UART", …) next to the detected device name.
 - **Live display** in **ASCII**, **Hex** or **Binary**, switchable at any time.
 - **Lossless file logging** per port in ASCII, Hex or raw Binary. Log files contain **only the received bytes** — no timestamps or extra text — and no data is dropped under load.
-- **Transmit bar** with ASCII / HEX mode, visible `<CR>` / `<LF>` tokens and selectable line endings.
+- **Transmit bar** with ASCII / HEX mode, Up/Down command history, visible `<CR>` / `<LF>` tokens and selectable line endings.
 - **File transmit (`Send File`)** — stream files in **Raw** binary, **Text** (with line-ending conversion and per-line pacing), or parsed **Hex** bytes, with live progress and cancellation while RX monitoring and logging continue.
 - **Hardware removed indicator** — a red badge appears when a USB-serial device is unplugged; the COM list refreshes automatically.
 - **High performance** — dedicated receive thread per port, background log writer, terminal refreshed every 50 ms regardless of traffic.
@@ -53,6 +53,7 @@ Click **? Help** in the app for a full description of every button.
 |---|---|
 | **Enter** | Send the text in the TX box |
 | **Ctrl+Enter** | Insert `<CR>`; press again right after it to insert `<LF>` (HEX mode: `0D`, then `0A`) |
+| **Up / Down** | Recall recently sent strings into the TX box (fills the box without sending) |
 | **ASCII / HEX** | ASCII mode sends 7-bit ASCII only (other characters are sent as `?`). In HEX mode, type bytes such as `48 65 6C 6C 6F` |
 | **Line ending** | Appends None / CR / LF / CRLF — **ASCII mode only**; in HEX mode add `0D 0A` yourself |
 
