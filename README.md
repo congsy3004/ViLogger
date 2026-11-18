@@ -96,7 +96,7 @@ Start, completion, cancellation, and error notices are shown in the terminal mon
 
 - Maximum 4 ports at the same time.
 - **No timestamps** in the log or the view — not suitable for timing measurements.
-- The terminal is a live preview that keeps only the latest ~120,000 characters; the **log file is the record**.
+- The terminal is a live preview that keeps only the latest 500 lines (up to 25,000 characters); the **log file is the record**.
 - Wrong baud/parity settings are not detected (parity/framing errors are not reported).
 - After a device is unplugged, reconnect manually (press **Connect**, then **Log** again).
 - Transmitted (TX) data is not written to log files.

@@ -292,7 +292,7 @@
 
                     <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="View: (combobox)"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Controls how received bytes are displayed in the monitor (a quick view - the log file is the record). ASCII = readable text; CR, LF and CRLF each start a new line, other non-printable bytes are shown as '.', and text without a line ending (e.g. a 'COM1&gt;' prompt) appears immediately. Hex = raw hex bytes (e.g. 48 65 6C), 16 bytes per line. Binary = byte count only. Can be changed while connected. The monitor keeps roughly the latest 120,000 characters; text can be selected and copied."/>
+                               Text="Controls how received bytes are displayed in the monitor (a quick view - the log file is the record). ASCII = readable text; CR, LF and CRLF each start a new line, other non-printable bytes are shown as '.', and text without a line ending (e.g. a 'COM1&gt;' prompt) appears immediately. Hex = raw hex bytes (e.g. 48 65 6C), 16 bytes per line. Binary = byte count only. Can be changed while connected. The monitor keeps up to the latest 500 lines (max 25,000 characters); text can be selected and copied."/>
                     <Border Grid.Row="7" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
 
                     <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log: (combobox)"/>

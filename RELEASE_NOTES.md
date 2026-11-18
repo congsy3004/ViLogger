@@ -5,6 +5,19 @@
 
 ---
 
+## v1.2.2 — 2026-11-18
+
+**Added application version to the main window title bar and tightened per-port terminal scrollback limits.**
+
+---
+
+### 🔄 Changed
+
+- **Version in main window title bar:** displays `ARVSerialTool vX.Y.Z — Serial Monitor & Logger` on startup so you can see the exact running version without opening Help.
+- **Tighter per-port terminal scrollback limit:** reduced each port's live terminal buffer from `120,000` characters to **`500 lines`** (trimmed to `400 lines`) and **`25,000` characters** (trimmed to `20,000` characters for long/newline-less streams) so auto-scrolling stays lightweight and responsive under heavy traffic. *(Log files remain unbounded and lossless.)*
+
+---
+
 ## v1.2.1 — 2026-11-17
 
 **Added Up / Down arrow TX command history recall in the TX input box.**

@@ -1,6 +1,6 @@
 # ARVSerialTool — Limits & Pitfalls
 
-Applies to **ARVSerialTool v1.2.0** and later *(formerly ViLogger)*. Numbers assume **8N1** framing (10 bits per byte), so
+Applies to **ARVSerialTool v1.2.2** and later *(formerly ViLogger)*. Numbers assume **8N1** framing (10 bits per byte), so
 **bytes/s ≈ baud ÷ 10** — e.g. 115200 baud ≈ 11.5 KB/s, 921600 baud ≈ 92 KB/s.
 
 > [!IMPORTANT]
@@ -20,7 +20,7 @@ flowchart LR
     E --> F["Log file"]
     C --> G["Display queue (unbounded)"]
     G --> H["UI tick every 50 ms"]
-    H --> I["Terminal (max 120,000 chars)"]
+    H --> I["Terminal (max 500 lines / 25 KB)"]
 ```
 
 The log path and the display path are independent: a slow or paused terminal never affects the log. Transmit (manual TX and background File TX) writes directly to the serial stream under a dedicated write lock, so streaming a file never blocks the receive or log threads.
@@ -38,7 +38,7 @@ The log path and the display path are independent: a slow or paused terminal nev
 | Read chunk | up to 8 KB per read | A chunk is whatever the driver delivered, not a "message" |
 | Log queue | **Unbounded** (RAM) | Never drops data; RAM grows if the disk is slower than the port |
 | Log flush | every **500 ms** (64 KB file buffer) | Data at risk if the app is killed / PC loses power |
-| Terminal text | **120,000 chars**, trimmed to 80,000 | See §4 — only seconds of data at high baud |
+| Terminal text | **500 lines** (trimmed to 400) / **25,000 chars** (trimmed to 20,000) | See §4 — live preview only; log file keeps all data |
 | UI refresh | every **50 ms** (20×/s) | Counters and terminal update rate |
 | TX write timeout | **500 ms**, 4 KB TX buffer | Manual single TX > ~4.5 KB at 9600 fails (§6); File TX slices to ~200 ms writes |
 | File TX chunk / delay | Chunk **1 – 4096 B**, Delay **0 – 60,000 ms** | Paces Raw/Hex chunks or Text lines (§6) |
@@ -83,13 +83,14 @@ Date/time tokens use your PC's **local time**. Characters that are not allowed i
 ## 4. Terminal (live view)
 
 ### How much history you can see
-The terminal keeps at most **120,000 characters**; when exceeded it cuts back to **80,000** (at a line break).
+The terminal keeps at most **500 lines** (trimmed back to **400 lines**) and at most **25,000 characters**
+(trimmed back to **20,000 characters** for long or newline-less streams).
 
 | View | Chars per byte | ≈ Data kept | At 115200 baud | At 921600 baud |
 |---|---|---|---|---|
-| ASCII | 1 | 80–120 KB | **7–10 s** | **~1 s** |
-| Hex | 3 | 27–40 KB | **2–3.5 s** | **~0.3–0.4 s** |
-| Binary | — | shows only `[Binary data: N bytes]` per 50 ms tick | — | — |
+| ASCII | 1 | 400–500 lines (max 20–25 KB) | **~1.7–2.2 s** continuous | **~0.2–0.3 s** continuous |
+| Hex | 3 (16 B / line) | 400–500 lines (6.4–8.0 KB) | **~0.55–0.7 s** | **~0.07–0.09 s** |
+| Binary | — | 400–500 `[Binary data: N bytes]` lines (~20–25 s of active ticks) | — | — |
 
 **AutoScroll OFF** freezes the view so you can read/copy, but data keeps arriving and the oldest part is
 still trimmed — when you turn AutoScroll back ON, anything older than the window above is gone from the view
