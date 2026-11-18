@@ -477,5 +477,49 @@ public sealed class FileSenderAndViewModelTests : IDisposable
         Assert.True(vm.NavigateTxHistoryUp());
         Assert.Equal("AT", vm.TxInput);
     }
+
+    [Fact]
+    public void TerminalBuffer_ExceedingMaxLines_TrimsToTrimToLinesWholeLines()
+    {
+        var buf = new TerminalBuffer();
+
+        for (int i = 1; i <= TerminalBuffer.MaxLines; i++)
+        {
+            buf.AppendBytes(Encoding.ASCII.GetBytes($"Line_{i:D3}\r\n"), LogFormat.Ascii);
+        }
+
+        Assert.Equal(TerminalBuffer.MaxLines, buf.LineCount);
+        Assert.True(buf.TryTakeUpdate(out bool initReset, out string initText));
+        Assert.True(initReset);
+        Assert.StartsWith("Line_001\n", initText);
+
+        // Appending one more line triggers trim back to TrimToLines whole lines
+        buf.AppendBytes(Encoding.ASCII.GetBytes("Line_501\r\n"), LogFormat.Ascii);
+        Assert.True(buf.TryTakeUpdate(out bool reset, out string text));
+        Assert.True(reset);
+        Assert.Equal(TerminalBuffer.TrimToLines, buf.LineCount);
+        Assert.StartsWith("Line_102\n", text);
+        Assert.EndsWith("Line_501\n", text);
+
+        // Hex view: 501 lines of 16 bytes each (8,016 bytes) also caps at 400 lines after trimming
+        buf.Clear();
+        byte[] hexPayload = new byte[(TerminalBuffer.MaxLines + 1) * 16];
+        buf.AppendBytes(hexPayload, LogFormat.Hex);
+        Assert.True(buf.TryTakeUpdate(out bool hexReset, out _));
+        Assert.True(hexReset);
+        Assert.Equal(TerminalBuffer.TrimToLines, buf.LineCount);
+    }
+
+    [Fact]
+    public void TerminalBuffer_NewlinelessStreamExceedingMaxChars_TrimsToTrimToChars()
+    {
+        var buf = new TerminalBuffer();
+        byte[] payload = Enumerable.Repeat((byte)'A', TerminalBuffer.MaxChars + 1).ToArray();
+
+        buf.AppendBytes(payload, LogFormat.Ascii);
+        Assert.True(buf.TryTakeUpdate(out bool reset, out string text));
+        Assert.True(reset);
+        Assert.Equal(TerminalBuffer.TrimToChars, text.Length);
+    }
 #endif
 }

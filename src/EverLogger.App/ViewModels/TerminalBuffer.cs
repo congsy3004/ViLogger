@@ -16,18 +16,25 @@ namespace EverLogger.App.ViewModels;
 /// <list type="bullet">
 /// <item>No per-byte or per-packet UI work. Text is collected here and handed to the view in one
 ///       piece per UI tick via <see cref="TryTakeUpdate"/>.</item>
-/// <item>Bounded memory. When the text exceeds <see cref="MaxChars"/>, the oldest part is dropped
-///       (at a line boundary) and the view is told to reload the whole remaining text once.</item>
+/// <item>Bounded memory. When the text exceeds <see cref="MaxLines"/> or <see cref="MaxChars"/>,
+///       the oldest part is dropped (at a line boundary when lines are present) and the view is
+///       told to reload the remaining text once.</item>
 /// <item>No state shared with other threads: every member must be called on the UI thread.</item>
 /// </list>
 /// </remarks>
 public sealed class TerminalBuffer
 {
-    /// <summary>Maximum characters kept for display.</summary>
-    public const int MaxChars = 120_000;
+    /// <summary>Maximum lines kept for display per port.</summary>
+    public const int MaxLines = 500;
 
-    /// <summary>Characters kept after trimming (trimming happens in large steps, so rarely).</summary>
-    public const int TrimToChars = 80_000;
+    /// <summary>Lines kept after trimming when <see cref="MaxLines"/> is exceeded.</summary>
+    public const int TrimToLines = 400;
+
+    /// <summary>Maximum characters kept for display (safeguard for long or newline-less streams).</summary>
+    public const int MaxChars = 25_000;
+
+    /// <summary>Characters kept after trimming when <see cref="MaxChars"/> is exceeded.</summary>
+    public const int TrimToChars = 20_000;
 
     private const int BytesPerHexLine = 16;
     private const string HexDigits = "0123456789ABCDEF";
@@ -36,6 +43,7 @@ public sealed class TerminalBuffer
     private readonly StringBuilder _pending = new();  // appended since the view last synced
     private readonly StringBuilder _scratch = new();
     private bool _resetPending = true;                 // view must reload the whole text
+    private int _newlineCount;                         // number of '\n' chars currently in _text
 
     private LogFormat? _lastFormat;
     private bool _atLineStart = true;
@@ -45,6 +53,9 @@ public sealed class TerminalBuffer
 
     /// <summary>True if the view is out of date.</summary>
     public bool HasUpdate => _resetPending || _pending.Length > 0 || _binaryBytes > 0;
+
+    /// <summary>Number of lines currently buffered for display.</summary>
+    public int LineCount => _newlineCount + (_text.Length > 0 && _text[_text.Length - 1] != '\n' ? 1 : 0);
 
     /// <summary>
     /// Appends received bytes, rendered in the given view format.
@@ -100,6 +111,7 @@ public sealed class TerminalBuffer
         _text.Clear();
         _pending.Clear();
         _resetPending = true;
+        _newlineCount = 0;
         _atLineStart = true;
         _prevWasCr = false;
         _hexColumn = 0;
@@ -229,6 +241,10 @@ public sealed class TerminalBuffer
         if (s.Length == 0) return;
         _text.Append(s);
         if (!_resetPending) _pending.Append(s);
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\n') _newlineCount++;
+        }
         TrimIfNeeded();
     }
 
@@ -237,27 +253,58 @@ public sealed class TerminalBuffer
         if (sb.Length == 0) return;
         _text.Append(sb);
         if (!_resetPending) _pending.Append(sb);
+        for (int i = 0; i < sb.Length; i++)
+        {
+            if (sb[i] == '\n') _newlineCount++;
+        }
         TrimIfNeeded();
     }
 
     private void TrimIfNeeded()
     {
-        if (_text.Length <= MaxChars) return;
+        int lineCount = LineCount;
+        if (lineCount <= MaxLines && _text.Length <= MaxChars) return;
 
-        int cut = _text.Length - TrimToChars;
+        int cut = 0;
 
-        // Prefer cutting just after a line break so the view starts with a whole line.
-        int limit = Math.Min(_text.Length, cut + 2000);
-        for (int i = cut; i < limit; i++)
+        if (lineCount > MaxLines)
         {
-            if (_text[i] == '\n')
+            int linesToDrop = lineCount - TrimToLines;
+            int seenNewlines = 0;
+            for (int i = 0; i < _text.Length; i++)
             {
-                cut = i + 1;
-                break;
+                if (_text[i] == '\n' && ++seenNewlines == linesToDrop)
+                {
+                    cut = i + 1;
+                    break;
+                }
             }
         }
 
+        if (_text.Length > MaxChars && _text.Length - cut > TrimToChars)
+        {
+            int charCut = _text.Length - TrimToChars;
+            int snapLimit = Math.Min(_text.Length, charCut + 500);
+            for (int i = charCut; i < snapLimit; i++)
+            {
+                if (_text[i] == '\n')
+                {
+                    charCut = i + 1;
+                    break;
+                }
+            }
+            if (charCut > cut) cut = charCut;
+        }
+
+        if (cut <= 0) return;
+
         _text.Remove(0, cut);
+        int remainingNewlines = 0;
+        for (int i = 0; i < _text.Length; i++)
+        {
+            if (_text[i] == '\n') remainingNewlines++;
+        }
+        _newlineCount = remainingNewlines;
 
         // The view's copy no longer matches; reload it once instead of appending.
         _resetPending = true;

@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -17,6 +18,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        string? rawVer = typeof(MainWindow).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        string? version = rawVer?.Split('+')[0];
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            Title = $"ARVSerialTool v{version} — Serial Monitor & Logger";
+        }
         DataContext = new MainViewModel();
     }
 
