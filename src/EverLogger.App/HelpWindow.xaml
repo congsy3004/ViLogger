@@ -127,6 +127,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="Log Directory"/>
@@ -147,6 +151,16 @@
                     <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BtnName}" Text="File Template"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource BtnDesc}"
                                Text="Naming pattern for new log files. Tokens: {port} = COM port name, {date} = yyyy-MM-dd, {time} = HH-mm-ss, {datetime} = yyyy-MM-dd_HH-mm-ss, {timestamp} = yyyyMMddHHmmss. Date/time values are in local time (your PC clock). Extension is added automatically: .log for ASCII/Hex, .bin for Binary. Default: {port}_{datetime}."/>
+                    <Border Grid.Row="7" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource BtnName}" Text="Max Size (MB)"/>
+                    <TextBlock Grid.Row="8" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Maximum size per log file in MB. Pick a preset or type any integer from 0 (unlimited, default) up to 102400 (100 GB). Applied when logging starts."/>
+                    <Border Grid.Row="9" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="On Limit"/>
+                    <TextBlock Grid.Row="10" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Action taken when an active log file reaches Max Size: Rotate = closes the full file and continues seamlessly in a new numbered part file (_part2, _part3, ...); Stop = flushes, closes the file, and stops logging for that port. A popup notification explains what happened."/>
                 </Grid>
 
                 <!-- ══════════════ PORT CONFIGURATION CARD ══════════════ -->
@@ -428,7 +442,31 @@
 
                     <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource BtnName}" Text="➤ Send File  /  ■ Stop"/>
                     <TextBlock Grid.Row="10" Grid.Column="1" Style="{StaticResource BtnDesc}"
-                               Text="Streams the selected file in the background while keeping RX monitoring and logging active. Shows live progress and allows cancelling at any time with ■ Stop. Start/completion/error notices appear in the terminal (file contents are not dumped into the terminal)."/>
+                               Text="Streams the selected file in the background while keeping RX monitoring and logging active. Shows live progress and allows cancelling at any time with ■ Stop. Start/completion/error notices appear in the terminal (file contents are not dumped into the terminal), and completion/failure triggers a popup notification."/>
+                </Grid>
+
+                <!-- ══════════════ EVENT NOTIFICATIONS (POPUPS) ══════════════ -->
+                <TextBlock Style="{StaticResource SectionHeader}" Text="Event Notifications (Popups)"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BtnName}" Text="Popup cards"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Non-blocking cards appear in the bottom-right corner when important events happen without interrupting live RX monitoring or logging. Warning and Error popups (log file limit reached with Rotate or Stop action, logging start failure, or log write error such as disk full; File Send failure) remain pinned until you dismiss them. Success popups (File Send completed) dismiss automatically after 8 seconds."/>
+                    <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource RowSep}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BtnName}" Text="✕  /  Dismiss all"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource BtnDesc}"
+                               Text="Click ✕ on any card to close it, or Dismiss all when multiple notifications are shown. Repeated rotations on the same port coalesce into one updated card with an occurrence counter (×N)."/>
                 </Grid>
 
                 <Border Height="20"/>

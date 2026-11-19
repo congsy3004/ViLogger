@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -18,6 +19,9 @@ public class MainViewModel : ViewModelBase
 {
     private const int UiTickMs = 50;
     private const int MaxPacketsPerTick = 100_000;
+    public const int MaxLogFileSizeMb = 102_400;
+    public const int MaxVisibleNotifications = 5;
+    public const int InfoAutoDismissSeconds = 8;
 
     private readonly SerialPortManager _portManager;
     private readonly DispatcherTimer _uiTimer;
@@ -26,6 +30,8 @@ public class MainViewModel : ViewModelBase
 
     private string _logDirectory = ResolveDefaultLogDirectory();
     private string _logFileNameTemplate = "{port}_{datetime}";
+    private string _maxLogFileSizeMbText = "0";
+    private LogLimitAction _selectedLogLimitAction = LogLimitAction.Rotate;
     private bool _isAllConnected;
     private bool _isAllLogging;
     private string _statusBarText = "Ready";
@@ -43,6 +49,8 @@ public class MainViewModel : ViewModelBase
         Ports = new ObservableCollection<PortTabViewModel>();
         AvailablePorts = new ObservableCollection<PortInfo>();
         CommonBaudRates = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
+        CommonLogFileSizesMb = new ObservableCollection<string> { "0", "10", "50", "100", "500", "1024" };
+        Notifications = new ObservableCollection<AppNotification>();
         AddPortCommand = new RelayCommand(AddPort, () => Ports.Count < 4);
         ConnectAllCommand = new RelayCommand(ConnectAll, () => Ports.Any(p => p.IsConfigured && !p.IsConnected));
         DisconnectAllCommand = new RelayCommand(DisconnectAll, () => Ports.Any(p => p.IsConnected));
@@ -52,6 +60,7 @@ public class MainViewModel : ViewModelBase
         ToggleLogAllCommand = new RelayCommand(ToggleLogAll, () => Ports.Any(p => p.IsConfigured));
         ClearAllCommand = new RelayCommand(ClearAll);
         OpenLogDirectoryCommand = new RelayCommand(OpenLogDirectory);
+        DismissAllNotificationsCommand = new RelayCommand(DismissAllNotifications, () => Notifications.Count > 0);
         
         BrowseLogDirectoryCommand = new RelayCommand(() =>
         {
@@ -81,6 +90,9 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<PortTabViewModel> Ports { get; }
     public ObservableCollection<PortInfo> AvailablePorts { get; }
     public ObservableCollection<int> CommonBaudRates { get; }
+    public ObservableCollection<string> CommonLogFileSizesMb { get; }
+    public LogLimitAction[] LogLimitActionOptions { get; } = Enum.GetValues<LogLimitAction>();
+    public ObservableCollection<AppNotification> Notifications { get; }
     // ═══════════════════ Properties ═══════════════════
 
     /// <summary>
@@ -104,6 +116,52 @@ public class MainViewModel : ViewModelBase
         get => _logFileNameTemplate;
         set => SetProperty(ref _logFileNameTemplate, value);
     }
+
+    public string MaxLogFileSizeMbText
+    {
+        get => _maxLogFileSizeMbText;
+        set
+        {
+            if (SetProperty(ref _maxLogFileSizeMbText, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IsMaxLogFileSizeValid));
+                OnPropertyChanged(nameof(MaxLogFileSizeBytes));
+            }
+        }
+    }
+
+    public bool IsMaxLogFileSizeValid => TryParseMaxLogSizeBytes(_maxLogFileSizeMbText, out _);
+
+    public long MaxLogFileSizeBytes => TryParseMaxLogSizeBytes(_maxLogFileSizeMbText, out long bytes) ? bytes : 0;
+
+    public LogLimitAction SelectedLogLimitAction
+    {
+        get => _selectedLogLimitAction;
+        set => SetProperty(ref _selectedLogLimitAction, value);
+    }
+
+    public static bool TryParseMaxLogSizeBytes(string? text, out long maxBytes)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            maxBytes = 0;
+            return true;
+        }
+
+        if (int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int mb)
+            && mb >= 0 && mb <= MaxLogFileSizeMb)
+        {
+            maxBytes = mb * 1024L * 1024L;
+            return true;
+        }
+
+        maxBytes = 0;
+        return false;
+    }
+
+    public bool HasNotifications => Notifications.Count > 0;
+
+    public bool HasMultipleNotifications => Notifications.Count > 1;
 
     public bool IsAllConnected
     {
@@ -135,6 +193,7 @@ public class MainViewModel : ViewModelBase
     public ICommand ClearAllCommand { get; }
     public ICommand OpenLogDirectoryCommand { get; }
     public ICommand BrowseLogDirectoryCommand { get; }
+    public ICommand DismissAllNotificationsCommand { get; }
 
     // ═══════════════════ Port Management ═══════════════════
 
@@ -192,7 +251,12 @@ public class MainViewModel : ViewModelBase
             canUsePort: (t, portName) => !Ports.Any(p =>
                 p != t && p.IsConfigured && string.Equals(p.PortName, portName, StringComparison.OrdinalIgnoreCase)),
             reportStatus: msg => StatusBarText = msg,
-            sendSliceAction: (t, buf, off, cnt) => _portManager.WriteToPort(t.PortName, buf, off, cnt));
+            sendSliceAction: (t, buf, off, cnt) => _portManager.WriteToPort(t.PortName, buf, off, cnt),
+            getMaxLogFileSizeBytes: () => MaxLogFileSizeBytes,
+            getLogLimitAction: () => SelectedLogLimitAction,
+            isMaxLogFileSizeValid: () => IsMaxLogFileSizeValid,
+            reportNotification: (severity, title, message, port, coalesceKey) =>
+                PostNotification(severity, title, message, port, coalesceKey));
 
         tab.PropertyChanged += (s, e) =>
         {
@@ -643,6 +707,125 @@ public class MainViewModel : ViewModelBase
                 Debug.WriteLine($"Display flush error ({tab.PortName}): {ex}");
             }
         }
+
+        ExpireNotifications(DateTime.UtcNow);
+    }
+
+    // ═══════════════════ Notifications ═══════════════════
+
+    /// <summary>
+    /// Posts a non-blocking in-app notification popup card. Warning and Error notifications stay
+    /// pinned until manually dismissed unless <paramref name="autoDismiss"/> overrides it.
+    /// </summary>
+    public void PostNotification(
+        NotificationSeverity severity,
+        string title,
+        string message,
+        string? sourcePort = null,
+        string? coalesceKey = null,
+        bool? autoDismiss = null)
+    {
+        if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(() => PostNotification(severity, title, message, sourcePort, coalesceKey, autoDismiss));
+            return;
+        }
+
+        bool shouldAutoDismiss = autoDismiss ?? (severity is NotificationSeverity.Info or NotificationSeverity.Success);
+        TimeSpan? ttl = shouldAutoDismiss ? TimeSpan.FromSeconds(InfoAutoDismissSeconds) : null;
+        DateTime nowLocal = DateTime.Now;
+        DateTime nowUtc = DateTime.UtcNow;
+
+        if (!string.IsNullOrEmpty(coalesceKey))
+        {
+            for (int i = 0; i < Notifications.Count; i++)
+            {
+                var existing = Notifications[i];
+                if (existing.Severity == severity &&
+                    string.Equals(existing.CoalesceKey, coalesceKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    existing.RecordOccurrence(title, message, nowLocal, nowUtc, ttl);
+                    if (i != Notifications.Count - 1)
+                    {
+                        Notifications.Move(i, Notifications.Count - 1);
+                    }
+                    return;
+                }
+            }
+        }
+
+        var item = new AppNotification(
+            severity,
+            title,
+            message,
+            sourcePort,
+            coalesceKey,
+            shouldAutoDismiss,
+            ttl,
+            DismissNotification,
+            nowLocal,
+            nowUtc);
+
+        Notifications.Add(item);
+
+        while (Notifications.Count > MaxVisibleNotifications)
+        {
+            int evictIndex = -1;
+            for (int i = 0; i < Notifications.Count; i++)
+            {
+                if (Notifications[i].AutoDismiss)
+                {
+                    evictIndex = i;
+                    break;
+                }
+            }
+
+            Notifications.RemoveAt(evictIndex >= 0 ? evictIndex : 0);
+        }
+
+        SyncNotificationFlags();
+    }
+
+    public void DismissNotification(AppNotification notification)
+    {
+        if (Notifications.Remove(notification))
+        {
+            SyncNotificationFlags();
+        }
+    }
+
+    public void DismissAllNotifications()
+    {
+        if (Notifications.Count == 0) return;
+        Notifications.Clear();
+        SyncNotificationFlags();
+    }
+
+    public void ExpireNotifications(DateTime nowUtc)
+    {
+        if (Notifications.Count == 0) return;
+
+        bool removed = false;
+        for (int i = Notifications.Count - 1; i >= 0; i--)
+        {
+            if (Notifications[i].ExpiresAtUtc is { } exp && nowUtc >= exp)
+            {
+                Notifications.RemoveAt(i);
+                removed = true;
+            }
+        }
+
+        if (removed)
+        {
+            SyncNotificationFlags();
+        }
+    }
+
+    private void SyncNotificationFlags()
+    {
+        OnPropertyChanged(nameof(HasNotifications));
+        OnPropertyChanged(nameof(HasMultipleNotifications));
+        ((RelayCommand)DismissAllNotificationsCommand).RaiseCanExecuteChanged();
     }
 
     /// <summary>

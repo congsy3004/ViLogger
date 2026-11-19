@@ -43,7 +43,7 @@ The log path and the display path are independent: a slow or paused terminal nev
 | TX write timeout | **500 ms**, 4 KB TX buffer | Manual single TX > ~4.5 KB at 9600 fails (§6); File TX slices to ~200 ms writes |
 | File TX chunk / delay | Chunk **1 – 4096 B**, Delay **0 – 60,000 ms** | Paces Raw/Hex chunks or Text lines (§6) |
 | Timestamps | **None** (view or log) | Not usable for timing analysis (§7) |
-| Log rotation | **None** | One file per session, grows without limit (§3) |
+| Log rotation / size limit | Configurable **0** (unlimited) or **1 – 102,400 MB** (**Rotate** or **Stop**) | Applied when logging starts; triggers a popup notification when reached (§3) |
 
 ---
 
@@ -64,9 +64,9 @@ The log path and the display path are independent: a slow or paused terminal nev
 | Start / stop boundary | Logging starts with the **next driver chunk** after you click Log. Bytes received before that are not in the file. | Start logging *before* triggering the device. |
 | App killed (Task Manager), crash, power loss | Up to ~500 ms (max 64 KB) of the latest data may be missing. On power loss Windows' own disk cache can lose more. | Close the app normally; don't log critical data on a PC that may lose power. |
 | Device unplugged / port error | Logging **stops automatically**. Data still inside the adapter/driver is lost. Reconnect is manual, so there is a **gap**. Pressing Log again starts a **new file**. | Check for the HARDWARE REMOVED badge / `[--- … Disconnected ---]` line before trusting a long log. |
-| Very long runs | No rotation — the file just grows. **FAT32 USB sticks stop at 4 GB:** at 921600 baud continuous that is ~13 h (Binary/ASCII) or **~4.3 h (Hex)**. | Log to an NTFS drive; prefer Binary/ASCII for long captures. |
-| Slow disk (network share, slow USB stick) | Data waits in RAM (no loss), memory use grows. If the drive disappears, the write fails → logging stops with `Log error: …`. | Log to a local disk. |
-| Disk full / no permission | Logging stops (or refuses to start) and shows `Log error: …` in the status bar and terminal. | Watch the status bar; if the app folder is read-only, ARVSerialTool defaults to `Documents\ARVSerialTool\Logs`. |
+| Very long runs | Default `Max Size = 0` grows without limit (**FAT32 USB sticks stop at 4 GB:** at 921600 baud continuous that is ~13 h Binary/ASCII or **~4.3 h Hex**). Setting **Max Size (MB)** with **Rotate** splits into `_part2`, `_part3`, …; **Stop** halts logging at the limit and pops up a notice. | Log to an NTFS drive, prefer Binary/ASCII, or set `Max Size` (`< 4096` MB on FAT32) with `Rotate`. |
+| Slow disk (network share, slow USB stick) | Data waits in RAM (no loss), memory use grows. If the drive disappears, the write fails → logging stops with `Log error: …` and a popup notification. | Log to a local disk. |
+| Disk full / no permission | Logging stops (or refuses to start) and shows `Log error: …` in the status bar, terminal, and a pinned popup notification. | Watch for popups/status; if the app folder is read-only, ARVSerialTool defaults to `Documents\ARVSerialTool\Logs`. |
 
 ### File naming
 Date/time tokens use your PC's **local time**. Characters that are not allowed in file names are replaced with `_`.

@@ -52,6 +52,10 @@ public class PortTabViewModel : ViewModelBase
     private readonly Func<string> _getLogFileTemplate;
     private readonly Func<PortTabViewModel, string, bool> _canUsePort;
     private readonly Action<string>? _reportStatus;
+    private readonly Func<long> _getMaxLogFileSizeBytes;
+    private readonly Func<LogLimitAction> _getLogLimitAction;
+    private readonly Func<bool> _isMaxLogFileSizeValid;
+    private readonly Action<NotificationSeverity, string, string, string?, string?>? _reportNotification;
 
     // Tx state
     public const int MaxTxHistory = 50;
@@ -96,7 +100,11 @@ public class PortTabViewModel : ViewModelBase
         Func<string> getLogFileTemplate,
         Func<PortTabViewModel, string, bool>? canUsePort = null,
         Action<string>? reportStatus = null,
-        Action<PortTabViewModel, byte[], int, int>? sendSliceAction = null)
+        Action<PortTabViewModel, byte[], int, int>? sendSliceAction = null,
+        Func<long>? getMaxLogFileSizeBytes = null,
+        Func<LogLimitAction>? getLogLimitAction = null,
+        Func<bool>? isMaxLogFileSizeValid = null,
+        Action<NotificationSeverity, string, string, string?, string?>? reportNotification = null)
     {
         _config = new SerialPortConfig();
         _connectAction = connectAction;
@@ -121,6 +129,10 @@ public class PortTabViewModel : ViewModelBase
         _getLogFileTemplate = getLogFileTemplate;
         _canUsePort = canUsePort ?? ((_, _) => true);
         _reportStatus = reportStatus;
+        _getMaxLogFileSizeBytes = getMaxLogFileSizeBytes ?? (() => 0L);
+        _getLogLimitAction = getLogLimitAction ?? (() => LogLimitAction.Rotate);
+        _isMaxLogFileSizeValid = isMaxLogFileSizeValid ?? (() => true);
+        _reportNotification = reportNotification;
         AvailablePorts = availablePorts;
         CommonBaudRates = commonBaudRates;
 
@@ -729,9 +741,20 @@ public class PortTabViewModel : ViewModelBase
     {
         if (bytes < 1024)
             return $"{bytes} B";
-        if (bytes < 1024 * 1024)
+        if (bytes < 1024L * 1024L)
             return string.Format(CultureInfo.InvariantCulture, "{0:F1} KB", bytes / 1024.0);
-        return string.Format(CultureInfo.InvariantCulture, "{0:F2} MB", bytes / (1024.0 * 1024.0));
+        if (bytes < 1024L * 1024L * 1024L)
+        {
+            long mb = 1024L * 1024L;
+            return bytes % mb == 0
+                ? $"{bytes / mb} MB"
+                : string.Format(CultureInfo.InvariantCulture, "{0:F2} MB", bytes / (double)mb);
+        }
+
+        long gb = 1024L * 1024L * 1024L;
+        return bytes % gb == 0
+            ? $"{bytes / gb} GB"
+            : string.Format(CultureInfo.InvariantCulture, "{0:F2} GB", bytes / (double)gb);
     }
 
     // ───────────────── Config Actions ─────────────────
@@ -769,15 +792,33 @@ public class PortTabViewModel : ViewModelBase
     {
         if (IsLogging || !IsConfigured) return;
 
+        if (!_isMaxLogFileSizeValid())
+        {
+            const string err = "Invalid Max Size setting. Enter 0 for unlimited or 1–102400 MB.";
+            StatusText = $"Log error: {err}";
+            _reportStatus?.Invoke($"Log error ({PortName}): {err}");
+            AddLine($"[--- Logging could not start: {err} ---]");
+            _reportNotification?.Invoke(
+                NotificationSeverity.Error,
+                $"{PortName} — Logging Failed to Start",
+                $"{err} Logging did not start.",
+                PortName,
+                null);
+            if (_autoScroll && Terminal.HasUpdate) RaiseDisplayUpdate();
+            return;
+        }
+
         string logDir = _getLogDirectory();
         string templateStr = _getLogFileTemplate();
         string ext = SelectedLogFormat == LogFormat.Binary ? ".bin" : ".log";
+        long maxSizeBytes = _getMaxLogFileSizeBytes();
+        LogLimitAction limitAction = _getLogLimitAction();
 
         LogFileWriter writer;
         try
         {
             var template = new LogFileNameTemplate(templateStr, ext);
-            writer = new LogFileWriter(logDir, SelectedLogFormat, template, PortName);
+            writer = new LogFileWriter(logDir, SelectedLogFormat, template, PortName, maxSizeBytes, limitAction);
             writer.Start(); // creates the folder and opens the file; throws if that fails
         }
         catch (Exception ex)
@@ -785,6 +826,13 @@ public class PortTabViewModel : ViewModelBase
             StatusText = $"Log error: {ex.Message}";
             _reportStatus?.Invoke($"Log error ({PortName}): {ex.Message}");
             AddLine($"[--- Logging could not start: {ex.Message} ---]");
+            _reportNotification?.Invoke(
+                NotificationSeverity.Error,
+                $"{PortName} — Logging Failed to Start",
+                $"Could not open log file: {ex.Message} Logging did not start.",
+                PortName,
+                null);
+            if (_autoScroll && Terminal.HasUpdate) RaiseDisplayUpdate();
             return;
         }
 
@@ -795,7 +843,9 @@ public class PortTabViewModel : ViewModelBase
         IsLogging = true;
     }
 
-    public void StopLogging()
+    public void StopLogging() => StopLogging(notifyEvents: true);
+
+    private void StopLogging(bool notifyEvents)
     {
         if (!IsLogging) return;
 
@@ -807,12 +857,29 @@ public class PortTabViewModel : ViewModelBase
         if (writer != null)
         {
             writer.Stop();
+            if (notifyEvents)
+            {
+                DrainLogWriterEvents(writer, allowAutoStop: false);
+                if (writer.Fault is { } stopFault)
+                {
+                    StatusText = $"Log error: {stopFault.Message}";
+                    _reportStatus?.Invoke($"Log error ({PortName}): {stopFault.Message}");
+                    AddLine($"[--- Logging stopped: {stopFault.Message} ---]");
+                    _reportNotification?.Invoke(
+                        NotificationSeverity.Error,
+                        $"{PortName} — Log Write Error (Stopped)",
+                        $"Logging stopped because writing to the log file failed: {stopFault.Message}",
+                        PortName,
+                        null);
+                }
+            }
             SyncLogCounter(writer);
             _lastLogFilePath = writer.CurrentFilePath ?? _lastLogFilePath;
         }
 
         IsLogging = false;
         ((RelayCommand)OpenLogFileCommand).RaiseCanExecuteChanged();
+        if (notifyEvents && _autoScroll && Terminal.HasUpdate) RaiseDisplayUpdate();
     }
 
     private void ToggleLog()
@@ -846,7 +913,8 @@ public class PortTabViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Updates the LOG counter and stops logging visibly if the writer failed (e.g. disk full).
+    /// Updates the LOG counter, drains writer limit/rotation events, and stops logging visibly
+    /// if the writer reached a limit or failed (e.g. disk full).
     /// </summary>
     private void CheckLogWriter()
     {
@@ -854,14 +922,77 @@ public class PortTabViewModel : ViewModelBase
         if (writer == null) return;
 
         SyncLogCounter(writer);
+        _lastLogFilePath = writer.CurrentFilePath ?? _lastLogFilePath;
 
-        if (writer.Fault is { } fault)
+        bool stoppedByLimit = DrainLogWriterEvents(writer, allowAutoStop: true);
+
+        if (!stoppedByLimit && writer.Fault is { } fault)
         {
-            StopLogging();
+            StopLogging(notifyEvents: false);
             StatusText = $"Log error: {fault.Message}";
             _reportStatus?.Invoke($"Log error ({PortName}): {fault.Message}");
             AddLine($"[--- Logging stopped: {fault.Message} ---]");
+            _reportNotification?.Invoke(
+                NotificationSeverity.Error,
+                $"{PortName} — Log Write Error (Stopped)",
+                $"Logging stopped because writing to the log file failed: {fault.Message}",
+                PortName,
+                null);
         }
+    }
+
+    private bool DrainLogWriterEvents(LogFileWriter writer, bool allowAutoStop)
+    {
+        bool limitStopped = false;
+
+        while (writer.TryDequeueEvent(out var ev))
+        {
+            switch (ev.Kind)
+            {
+                case LogWriterEventKind.Rotated:
+                {
+                    string oldName = Path.GetFileName(ev.CompletedFilePath);
+                    string newName = Path.GetFileName(ev.NewFilePath ?? string.Empty);
+                    string limitText = FormatByteSize(ev.MaxFileSizeBytes);
+                    _lastLogFilePath = ev.NewFilePath ?? _lastLogFilePath;
+                    AddLine($"[--- Log limit ({limitText}) reached: closed {oldName}, rotated to {newName} ---]");
+                    _reportStatus?.Invoke($"Log rotated ({PortName}): {newName}");
+                    _reportNotification?.Invoke(
+                        NotificationSeverity.Warning,
+                        $"{PortName} — Log Limit Reached (Rotated)",
+                        $"Log file reached {limitText} limit. Closed \"{oldName}\" and continued logging in \"{newName}\".",
+                        PortName,
+                        $"log-rotated:{PortName}");
+                    break;
+                }
+                case LogWriterEventKind.LimitReachedStopped:
+                {
+                    string fileName = Path.GetFileName(ev.CompletedFilePath);
+                    string limitText = FormatByteSize(ev.MaxFileSizeBytes);
+                    string writtenText = FormatByteSize(ev.CompletedFileBytes);
+                    _lastLogFilePath = ev.CompletedFilePath;
+                    AddLine($"[--- Log limit ({limitText}) reached: closed {fileName} and stopped logging ---]");
+                    StatusText = $"Log stopped (limit {limitText} reached)";
+                    _reportStatus?.Invoke($"Log limit reached ({PortName}): logging stopped ({fileName})");
+                    _reportNotification?.Invoke(
+                        NotificationSeverity.Warning,
+                        $"{PortName} — Log Limit Reached (Stopped)",
+                        $"Log file \"{fileName}\" reached the {limitText} limit ({writtenText} written). Logging was stopped automatically; click Log to start a new file.",
+                        PortName,
+                        null);
+                    limitStopped = true;
+                    break;
+                }
+            }
+        }
+
+        if (limitStopped && allowAutoStop)
+        {
+            StopLogging(notifyEvents: false);
+            return true;
+        }
+
+        return limitStopped;
     }
 
     private void OpenLogFile()
@@ -1097,6 +1228,12 @@ public class PortTabViewModel : ViewModelBase
             _reportStatus?.Invoke($"File send error ({PortName}): {msg}");
             FileSendProgressText = "File not found";
             AddLine($"[--- TX File error: {msg} ---]");
+            _reportNotification?.Invoke(
+                NotificationSeverity.Error,
+                $"{PortName} — File Send Failed",
+                $"Could not send \"{fileName}\": file was not found.",
+                PortName,
+                null);
             if (_autoScroll && Terminal.HasUpdate) RaiseDisplayUpdate();
             return;
         }
@@ -1153,6 +1290,12 @@ public class PortTabViewModel : ViewModelBase
             if (IsConnected) StatusText = "Connected";
             _reportStatus?.Invoke($"Sent {fileName} ({result.WireBytesSent:N0} B) on {PortName}");
             AddLine($"[--- TX File complete: {fileName} ({result.WireBytesSent:N0} B in {elapsedText} s) ---]");
+            _reportNotification?.Invoke(
+                NotificationSeverity.Success,
+                $"{PortName} — File Send Completed",
+                $"Sent \"{fileName}\" ({FormatByteSize(result.WireBytesSent)} in {elapsedText} s, {options.Mode} mode).",
+                PortName,
+                null);
         }
         catch (OperationCanceledException)
         {
@@ -1168,6 +1311,12 @@ public class PortTabViewModel : ViewModelBase
             if (IsConnected) StatusText = $"Tx File Error: {ex.Message}";
             _reportStatus?.Invoke($"File send error ({PortName}): {ex.Message}");
             AddLine($"[--- TX File error ({fileName}): {ex.Message} ---]");
+            _reportNotification?.Invoke(
+                NotificationSeverity.Error,
+                $"{PortName} — File Send Failed",
+                $"Failed to send \"{fileName}\": {ex.Message}",
+                PortName,
+                null);
         }
         finally
         {
@@ -1301,7 +1450,7 @@ public class PortTabViewModel : ViewModelBase
     public void Cleanup()
     {
         CancelFileSend();
-        StopLogging();
+        StopLogging(notifyEvents: false);
         IsHardwareRemoved = false;
         if (IsConnected)
         {

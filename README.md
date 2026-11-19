@@ -16,7 +16,8 @@ Watch up to 4 ports side by side, send commands or files, and record the raw rec
 - **Full UART settings** — any baud rate (pick a common one or type your own), data bits, parity, stop bits and handshake (flow control).
 - **Custom port names** — label each port ("GPS", "Debug UART", …) next to the detected device name.
 - **Live display** in **ASCII**, **Hex** or **Binary**, switchable at any time.
-- **Lossless file logging** per port in ASCII, Hex or raw Binary. Log files contain **only the received bytes** — no timestamps or extra text — and no data is dropped under load.
+- **Lossless file logging** per port in ASCII, Hex or raw Binary. Log files contain **only the received bytes** — no timestamps or extra text — and no data is dropped under load. Supports configurable **Max Size (MB)** limits with automatic **Rotate** (`_part2`, `_part3`, ...) or **Stop** actions.
+- **Non-blocking event notification popups** — bottom-right toast cards report log file size limits (rotated or stopped), log start/write errors (such as disk full), and File Transmit completion or errors without interrupting monitoring.
 - **Transmit bar** with ASCII / HEX mode, Up/Down command history, visible `<CR>` / `<LF>` tokens and selectable line endings.
 - **File transmit (`Send File`)** — stream files in **Raw** binary, **Text** (with line-ending conversion and per-line pacing), or parsed **Hex** bytes, with live progress and cancellation while RX monitoring and logging continue.
 - **Hardware removed indicator** — a red badge appears when a USB-serial device is unplugged; the COM list refreshes automatically.
@@ -90,6 +91,9 @@ Start, completion, cancellation, and error notices are shown in the terminal mon
   - **ASCII** (`.log`) — the exact received bytes (same content as Binary, for opening in a text editor).
   - **Hex** (`.log`) — every byte as two hex digits, exactly 16 bytes per line (file is 3× the data size).
   - **Binary** (`.bin`) — the exact received bytes.
+- **Max Size (MB) & On Limit:** set `Max Size` in the toolbar (`0` = unlimited, or `1–102400` MB) and choose **On Limit**:
+  - **Rotate** *(default)* — closes the full file and continues seamlessly in a new numbered part file (`_part2`, `_part3`, ...), showing a non-blocking popup notification.
+  - **Stop** — flushes and closes the file at the limit, stops logging for that port, and shows a popup notification.
 - A log file is locked while it is being written; stop logging before opening it.
 
 ## Known limitations
@@ -101,7 +105,7 @@ Start, completion, cancellation, and error notices are shown in the terminal mon
 - After a device is unplugged, reconnect manually (press **Connect**, then **Log** again).
 - Transmitted (TX) data is not written to log files.
 - ASCII view shows non-printable / non-ASCII bytes as `.` (no UTF-8 decoding).
-- No log rotation and no protocol decoders yet.
+- No protocol decoders yet.
 
 See [docs/LIMITS.md](docs/LIMITS.md) for buffer sizes, timing and other limits in detail, and
 [RELEASE_NOTES.md](RELEASE_NOTES.md) for the full change history.
